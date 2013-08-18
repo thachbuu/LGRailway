@@ -1,0 +1,40 @@
+﻿@{
+    PageData["Title"] = "Reset page";
+    int ResetLevel = Request["ResetLevel"].AsInt();
+    string message = "All ticket data was reset";
+    var db = Database.Open("MyDB");
+    if (ResetLevel == 1 || ResetLevel == 2)
+    {
+        //Reset Ticket data
+        string sqlDeleteTicket = "DELETE FROM Ticket";
+        string sqlResetTicket = "ALTER TABLE Ticket ALTER COLUMN TicketID IDENTITY (1,1)";
+        db.Execute(sqlDeleteTicket);
+        db.Execute(sqlResetTicket);
+        //Reset User data except admin user
+        if (ResetLevel == 2)
+        {
+            string sqlDeleteUser = "DELETE FROM Customers WHERE CustomerID > 1";
+            string sqlResetUser = "ALTER TABLE Customers ALTER COLUMN CustomerID IDENTITY (2,1)";
+            string sqlDeleteUserAccount = "DELETE FROM webpages_Membership WHERE UserId > 1";
+            db.Execute(sqlDeleteUser);
+            db.Execute(sqlResetUser);
+            db.Execute(sqlDeleteUserAccount);
+            message = "All user data was reset";
+        }
+    }
+    else if (ResetLevel == 3)
+    {
+        string sqlDeleteTime = "DELETE FROM IPTime";
+        string sqlResetTicketme = "ALTER TABLE IPTime ALTER COLUMN ID IDENTITY (1,1)";
+        db.Execute(sqlDeleteTime);
+        db.Execute(sqlResetTicketme);
+        message = "All time tracking data was reset";
+    }
+    else
+    {
+        Response.Redirect("~/Page/InvalidPage.cshtml");
+    }
+}
+
+<h1 align="center">@message</h1>
+<p><a href="AdminPage.cshtml">Click here</a> to return to Admin page</p>

@@ -1,0 +1,71 @@
+﻿@{
+    //Get ID from URL
+    int iTrainID = Request["id"].AsInt();
+    //If the id is invalid, show the Invalid page
+    if (iTrainID < 1)
+    {
+        Response.Redirect("~/Page/InvalidPage.cshtml");
+    }
+    
+    //Open database
+    var db = Database.Open("MyDB");
+    //Query depart and arrive station names
+    string sqlQStationName = @"SELECT S1.StationName AS DepartStation, S2.StationName AS ArriveStation 
+                                FROM TrainTime AS T1 
+                                INNER JOIN Stations AS S1 ON (S1.StationID=T1.StationIDSrc) 
+                                INNER JOIN Stations AS S2 ON (S2.StationID=T1.StationIDDst) 
+                                WHERE T1.Id=@0";
+    var StationNames = db.QuerySingle(sqlQStationName, iTrainID);
+    //If the id is invalid, show the Invalid page
+    if (StationNames == null)
+    {
+        Response.Redirect("~/Page/InvalidPage.cshtml");
+    }
+    //Set the page title
+    PageData["Title"] = "Train from " + StationNames.DepartStation + " to " + StationNames.ArriveStation + " information";
+    //Some queries for later use
+    string sqlQPaidSeat = "SELECT SUM(Quantity) FROM Ticket WHERE TrainTimeID=@0 AND DepartDate=@1 AND Paid>0";
+    string sqlBookedSeat = "SELECT SUM(Quantity) FROM Ticket WHERE TrainTimeID=@0 AND DepartDate=@1 AND Paid=0 AND BookDate>@2";//No need to worry about depart date >= today
+       
+    //An array to set classname for table row
+    string[] strClassName = {"EvenRow", "OddRow"};
+    DateTime today = DateTime.Now.Date;
+}
+
+<h1 align="center">@PageData["Title"]</h1>
+<div align="center">
+    <div @if(!_Fn.IsIELow()){<text>class="DivTable"</text>}>
+        <table class="MyTable WideTable">
+            <tr class="TableSmallHeader" align="left">
+                <th>Depart Date</th>
+                <th>Total seat</th>
+                <th>Booked seat</th>
+                <th>Paid seat</th>
+                <th>Available seat</th>                
+            </tr>
+            @for(int i = 0; i<=33; i++)
+            {
+                //Get the date
+                DateTime date = today.AddDays(i);
+                //Query paid seat
+                var PaidSeat = db.QueryValue(sqlQPaidSeat, iTrainID, date);
+                PaidSeat = (PaidSeat is DBNull ? 0 : PaidSeat);
+                //Query booked seat
+                DateTime EXPDate = today.AddDays(-_Fn.DAY_TO_EXPIRE);
+                var BookedSeat = db.QueryValue(sqlBookedSeat, iTrainID, date, EXPDate);
+                BookedSeat = (BookedSeat is DBNull ? 0 : BookedSeat);
+                //Calculate avail seat
+                int TotalSeat = _Fn.TICKET_PER_TRAIN;
+                int AvailSeat = TotalSeat - BookedSeat - PaidSeat;
+                
+                <tr class=@strClassName[i%2] onMouseOut="this.className='@strClassName[i%2]'" onMouseOver="this.className='TableHilightRow'">
+                    <td>@date.ToShortDateString()</td>
+                    <td>@TotalSeat</td>
+                    <td>@BookedSeat</td>
+                    <td>@PaidSeat</td>
+                    <td>@AvailSeat</td>                    
+                </tr>
+            }
+        </table>
+    </div>
+</div>

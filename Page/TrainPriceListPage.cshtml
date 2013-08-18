@@ -1,0 +1,26 @@
+﻿@{
+    PageData["Title"] = "Train ticket price list";
+}
+
+@{
+    var db = Database.Open("MyDB");
+    var sqlQTrainStation = "SELECT T.StationIdDst, S.StationName AS DstName FROM TrainTime AS T INNER JOIN Stations AS S ON (S.StationID = T.StationIdDst) WHERE T.StationIdSrc=@0 ORDER BY T.StationIdDst";
+    var sqlQStations = "SELECT StationID AS IDSrc, StationName AS SrcName FROM Stations ORDER BY StationID";
+    var StationList = db.Query(sqlQStations);
+}
+<h1 align="center">@PageData["Title"]</h1>
+<table class="NoBorder" align="center">
+    @foreach(var station in StationList)
+    {
+        var trainTime = db.Query(sqlQTrainStation, station.IDSrc);
+        if(trainTime.Count > 0)
+        {
+            <tr><th class="NoBorder"><li class="ListBig">Trains depart from @station.SrcName:</li></th></tr>
+            foreach(var row in trainTime)
+            {                              
+            @:<tr><td class="NoBorder"><li class="ListSmall">@station.SrcName to @row.DstName</li></td><td class="NoBorder"><a class="BoxLink" href="TicketPricePage.cshtml?id1=@station.IDSrc&id2=@row.StationIdDst">Check Price</a></td></tr>
+            }
+            
+        }
+    }
+</table>

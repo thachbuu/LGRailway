@@ -1,0 +1,68 @@
+﻿@{
+    PageData["Title"] = "Ticket Price";
+}
+
+@{ 
+    //Open the database
+    var db = Database.Open("MyDB");
+    string sqlQStations = "SELECT StationName FROM Stations WHERE StationID=@0";
+    
+    //User should get here by a link similar to: ...?id1=number1&id2=number2
+    int IDSrc = Request["id1"].AsInt();
+    int IDDst = Request["id2"].AsInt();
+    
+    //If the ids are not correct, show an error page.
+    if (db.Query(sqlQStations, IDSrc).Count() < 1 || db.Query(sqlQStations, IDDst).Count() < 1)
+    {
+        Response.Redirect("InvalidPage.cshtml");
+    }
+    
+    //Query the info of the train from StationIdSrc to StationIDDst
+    var sqlQTrainStation = "SELECT T.Price, S1.StationName AS StationSrc, S2.StationName AS StationDst FROM TrainTime AS T INNER JOIN Stations AS S1 ON (S1.StationID=T.StationIDSrc) INNER JOIN Stations AS S2 ON (S2.StationID=T.StationIDDst) WHERE T.StationIdSrc=@0 AND T.StationIDDst=@1";
+    var TrainInfo = db.QuerySingle(sqlQTrainStation, IDSrc, IDDst);    
+    //Query the info of the seats. To be simple, all trains have the same set of seat type.
+    var sqlQSeatInfo = "SELECT * FROM Seats ORDER BY SeatPrice";
+    var SeatInfo = db.Query(sqlQSeatInfo);
+    var SeatTypeCount = SeatInfo.Count();
+    
+    string[] strClassName = {"EvenRow", "OddRow"};
+}
+
+<h1 align="center">@PageData["Title"]</h1>
+<div align="center">
+    <div @if(!_Fn.IsIELow()){<text>class="DivTable"</text>}>
+        <table class="MyTable MedTable" align="center">
+            <tr class="TableSmallHeader">
+                <th colspan="@(SeatTypeCount+1)">Ticket price from @TrainInfo.StationSrc to @TrainInfo.StationDst</th>
+            </tr>
+            <tr>
+                <th class="RowHeader">Seat type</td>
+                @foreach(var seat in SeatInfo)
+                {
+                    <td>@seat.SeatName</td>
+                }
+            </tr>
+            <tr>
+                <th class="RowHeader">Price (VND)</td>
+                @foreach(var seat in SeatInfo)
+                {
+                    <td>@((int)((seat.SeatPrice + TrainInfo.Price) * _Fn.PRICE_VALUE))</td>
+                }
+            </tr>
+        </table>
+    </div>
+</div>
+
+<table class="NoBorder" border="0" align="center">
+    <tr><th class="NoBorder">Note:</th></tr>
+@foreach(var seat in SeatInfo)
+{
+    <text>
+        <tr>
+            <td class="NoBorder">@seat.SeatName:</td>
+            <td class="NoBorder">@seat.Description</td>
+            <td class="NoBorder"><a class="BoxLink" href="BookTicketPage.cshtml?id1=@IDSrc&id2=@IDDst&id3=@seat.SeatID">Book ticket</a></td>
+        </tr>
+    </text>
+}
+</table>

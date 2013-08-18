@@ -1,0 +1,34 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+     <html lang="en">
+     <head>
+       <meta charset="utf-8" />
+        <noscript>
+            <meta http-equiv="refresh" runat="server" id="mtaJSCheck" content="0;/OtherPage/NoScriptPage.cshtml?redirect=@Request.RawUrl" />
+        </noscript>
+        <title>
+        @if(PageData["Title"] == null)
+        {
+            <text>QA Railway - Quality Assured</text>
+        }
+        else
+        {
+            <text>QA Railway - @PageData["Title"]</text>
+        }
+        </title>
+       <link rel="stylesheet" type="text/css" href="/Share/General.css" />
+     </head>
+     <body>
+        <div id="page">
+            <div id="header">
+                @RenderPage("~/Share/_Header.cshtml")
+            </div>
+            <div id="content">
+                @RenderBody()
+            </div>
+            <div id="footer">
+                @RenderPage("~/Share/_Footer.cshtml")
+            </div>
+        </div>
+     </body>
+     </html>

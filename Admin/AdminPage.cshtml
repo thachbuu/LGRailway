@@ -1,0 +1,232 @@
+@{
+    PageData["Title"] = "Admin page";
+    
+    var db = Database.Open("MyDB");
+    
+    string sqlQUserCount = "SELECT COUNT(CustomerID) FROM Customers";
+    int iUserCount = (int)db.QueryValue(sqlQUserCount) - 1;//Exclude admin
+    
+    string sqlQTicketCount = "SELECT SUM(Quantity) FROM Ticket";
+    var result = db.QueryValue(sqlQTicketCount);
+    int iTicketCount = (result is DBNull ? 0 : result);
+    
+    string sqlQPaidTicketCount = "SELECT SUM(Quantity) FROM Ticket WHERE Paid<>0";
+    result = db.QueryValue(sqlQPaidTicketCount);
+    int iPaidTicketCount = (result is DBNull ? 0 : result);
+    
+    string sqlQEXPTicketCount = "SELECT SUM(Quantity) FROM Ticket WHERE BookDate<=@0 AND Paid=0";
+    DateTime EXPDate = DateTime.Now.Date.AddDays(-_Fn.DAY_TO_EXPIRE);
+    result = db.QueryValue(sqlQEXPTicketCount, EXPDate);
+    int iEXPTicketCount = (result is DBNull ? 0 : result);
+    int iUnpaidTicketCount = iTicketCount - iPaidTicketCount - iEXPTicketCount;
+    
+}
+
+@if(_Fn.IsIELow())
+{
+    <h4 style="color: Red;">If possible, please do not use IE in admin page. Consider using Chrome or Firefox here.</h4>
+}
+<h1 align="center">@PageData["Title"]</h1>
+
+<h4>Reset Ticket data</h4>
+<p>Click the button below to delete all ticket data. Users will lose all their booked tickets.</p>
+<button type="button" name="ResetTicket" class="AdminButton" onclick="Reset(1)" style="color:Red">Reset Ticket</button>
+<hr class="Separater" align="left">
+
+<h4>Reset User data</h4>
+<p>Click the button below to delete all user data. All user accounts and tickets will be lost.</p>
+<button type="button" name="ResetData" class="AdminButton" onclick="Reset(2)" style="color:Red">Reset Data</button>
+<hr class="Separater" align="left">
+    
+<h4>Reset Time Tracking data</h4>
+<p>Click the button below to delete all time tracking data. This and User data has no relation.</p>
+<button type="button" name="ResetTime" class="AdminButton" onclick="Reset(3)" style="color:Red">Reset Time</button>
+<hr class="Separater" align="left">
+    
+<h4>Auto mark ticket as paid</h4>
+<p>Click the button below to mark 
+<select id="OptAutoMark">  
+    <option value="30">30%</option>
+    <option value="40">40%</option>
+    <option value="50">50%</option>
+</select> 
+of unpaid tickets as paid automatically.</p>
+<button type="button" name="AutoPay" class="AdminButton" onclick="AutoPay()" style="color:Red">Auto Mark</button>
+<hr class="Separater" align="left">
+
+<h4>Status</h4>
+    <table class="TrainTimeTable">
+        <tr>
+            <th class="RowHeader">Total user</th>
+            <td>@iUserCount</td>
+            <td><button type="button" name="UserDetail" onclick="window.location='Users.cshtml'">View detail</button></td>
+        </tr>
+        <tr>
+            <th class="RowHeader">Total ticket</th>
+            <td>@iTicketCount</td>
+            <td><button type="button" name="TicketDetail" onclick="window.location='TicketStatus.cshtml'">Quota status</button></td>
+        </tr>
+        <tr>
+            <th class="RowHeader">Total paid ticket</th>
+            <td>@iPaidTicketCount</td>
+            <td></td>
+        </tr>
+        <tr>
+            <th class="RowHeader">Total unpaid ticket</th>
+            <td>@iUnpaidTicketCount</td>
+            <td></td>
+        </tr>
+        <tr>
+            <th class="RowHeader">Total expired ticket</th>
+            <td>@iEXPTicketCount</td>            
+            <td>
+                @if(iEXPTicketCount > 0)
+                {
+                    @:<button type="button" name="ClearEXPTicket" onclick="ClearEXPTicket();">Delete All</button>
+                }
+            </td>
+        </tr>
+    </table>
+<hr class="Separater" align="left">
+
+<h4>Find user</h4>
+    <table class="NoBorder">
+        <tr>
+            <th class="NoBorder">Find using name:</th>
+            <td class="NoBorder"><input type="text" id="txtUsername" maxlength="@_Fn.MAX_NAME_LEN"></input></td>
+            <td class="NoBorder"><button type="button" name="FindUsername" onclick="FindUsername();">Find</button></td>
+        </tr>        
+        <tr>
+            <th class="NoBorder">Find using ID:</th>
+            <td class="NoBorder"><input type="text" id="txtUserID" onkeypress="return NumberOnly(event);" maxlength="6"></input></td>
+            <td class="NoBorder"><button type="button" name="FindUserID" onclick="FindUserId();">Find</button></td>
+        </tr>
+    </table>
+<hr class="Separater" align="left">
+    
+<h4>Find ticket by date</h4>
+    Date format: Today is @DateTime.Now.Date.ToShortDateString()
+    <table class="NoBorder">
+        <tr>
+            <th class="NoBorder">Depart</th>
+            <td class="NoBorder" rowspan="2">
+                <select id="OptDate">  
+                    <option value="1">on</option>
+                    <option value="2">before</option>
+                    <option value="3">after</option>
+                </select>
+            </td>
+            <td class="NoBorder"><input type="text" id="txtDepartDate" maxlength="10" size="8"></input></td>
+            <td class="NoBorder"><button type="button" name="FindDepartDate" onclick="FindTicketByDate(2);">Find</button></td>
+        </tr>        
+        <tr>
+            <th class="NoBorder">Book</th>
+            <td class="NoBorder"><input type="text" id="txtBookDate" maxlength="10" size="8"></input></td>
+            <td class="NoBorder"><button type="button" name="FindBookDate" onclick="FindTicketByDate(1);">Find</button></td>
+        </tr>
+    </table>
+<hr class="Separater" align="left">
+
+<h4>Other page</h4>
+    <table class="NoBorder">
+        <tr>
+            <th class="NoBorder"><a href="AdminFAQ.cshtml" class="BoxLink">Admin FAQ</a></th>
+            <th class="NoBorder"><a href="TimeTrackingStatus.cshtml" class="BoxLink">Time Tracking Status</a></th>
+        </tr>
+    </table>
+    
+<script type="text/javascript">
+<!--
+    function Reset(level)
+    {
+        var r;
+        var Message, URL;
+        
+        if (level == 1)
+        {
+            Message = "Do you really want to reset Ticket data?\nThis can't be reverted.";            
+        }
+        else if (level == 2)
+        {
+            Message = "Do you really want to reset User data?\nThis can't be reverted.";
+        }
+        else if (level == 3)
+        {
+            Message = "Do you really want to reset Time Tracking data?\nThis can't be reverted.";
+        }
+        else
+        {
+            window.location = "/Page/InvalidPage.cshtml";
+        }
+        
+        r = confirm(Message);
+        if (r==true)
+        {
+            URL = "ResetData.cshtml?ResetLevel=" + level;
+            window.location = URL;
+        }
+    }
+    
+    function ClearEXPTicket()
+    {
+        r = confirm("Are you sure you really want to delete all expired tickets?\nThis can't be reverted.");
+        if (r==true)
+        {
+            window.location = 'ClearEXPTicket.cshtml?confirm=999';
+        }
+    }
+    
+    function AutoPay()
+    {
+        r = confirm("Are you sure? This can't be reverted.");
+        if (r==true)
+        {
+            percent = document.getElementById("OptAutoMark").value;
+            window.location = 'AutoMarkPaid.cshtml?p=' + percent;
+        }
+    }
+    
+    function NumberOnly(evt)
+    {
+        var e = window.event || evt; // for trans-browser compatibility
+        var charCode = e.which || e.keyCode;
+    
+        if (charCode > 31 && (charCode < 48 || charCode > 57))
+            return false;
+    
+        return true;
+    }
+    
+    function FindUsername()
+    {
+        var name = document.getElementById("txtUsername").value;
+        if (name.length < @_Fn.MIN_NAME_LEN)
+        {
+            alert("Username must be at least @_Fn.MIN_NAME_LEN characters.");
+            return;
+        }
+        window.location = "FindUser.cshtml?name=" + name;
+    }
+    
+    function FindUserId()
+    {
+        var id = document.getElementById("txtUserID").value;
+        window.location = "FindUser.cshtml?id=" + id;
+    }
+    
+    function FindTicketByDate(type)
+    {
+        var date;
+        if (type == 1)
+        {
+            date = document.getElementById("txtBookDate").value;
+        }
+        else
+        {
+            date = document.getElementById("txtDepartDate").value;
+        }
+        var compare = document.getElementById("OptDate").value;
+        window.location = "Tickets.cshtml?date=" + date + "&type=" + type + "&cmp=" + compare;
+    }
+//-->
+</script>

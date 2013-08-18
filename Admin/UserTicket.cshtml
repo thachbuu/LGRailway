@@ -1,0 +1,145 @@
+﻿@{    
+    //Open the database
+    var db = Database.Open("MyDB");
+    //Get UserID
+    int id = Request["id"].AsInt();
+    if (id <=1)
+    {
+        Response.Redirect("~/Page/InvalidPage.cshtml");
+    }
+    //Query the info of this user
+    string sqlQCheckUser = @"SELECT 
+                                T2.StationIDSrc, T2.StationIDDst, 
+                                T1.TicketID, T1.CustomerID, T1.TrainTimeID, T1.SeatID, T1.Price, T1.Quantity, T1.DepartDate, T1.BookDate, T1.Paid, 
+                                S1.StationName AS DepartStation, S2.StationName AS ArriveStation, 
+                                ST.Description AS SeatName
+                            FROM TrainTime AS T2 
+                                INNER JOIN Ticket AS T1 ON (T1.TrainTimeID = T2.Id) 
+                                INNER JOIN Stations AS S1 ON (S1.StationID=T2.StationIDSrc) 
+                                INNER JOIN Stations AS S2 ON (S2.StationID=T2.StationIDDst) 
+                                INNER JOIN Seats AS ST ON (ST.SeatID=T1.SeatID)
+                            WHERE T1.CustomerID=@0 
+                            ORDER BY T1.TicketID DESC";
+    var UserTickets = db.Query(sqlQCheckUser, id);
+    //Query the username
+    string sqlQUsername = "SELECT Email FROM Customers WHERE CustomerID=@0";
+    string username = (string)db.QueryValue(sqlQUsername, id);
+    //Set page title
+    PageData["Title"] = username + "'s tickets";    
+    //Query the number of booked ticket
+    string sqlQTotalCount = "SELECT SUM(Quantity) FROM Ticket WHERE CustomerID=@0";
+    var iBookedCount = db.QueryValue(sqlQTotalCount, id);
+    iBookedCount = (iBookedCount is DBNull ? 0 : iBookedCount);
+    //Query the number of paid ticket
+    string sqlQPaidCount = "SELECT SUM(Quantity) FROM Ticket WHERE CustomerID=@0 AND Paid<>0";
+    var iPaidCount = db.QueryValue(sqlQPaidCount, id);
+    iPaidCount = (iPaidCount is DBNull ? 0 : iPaidCount);
+    //Query the number of unpaid ticket
+    string sqlQUnpaidCount = "SELECT SUM(Quantity) FROM Ticket WHERE CustomerID=@0 AND Paid=0 AND (BookDate>@1 AND DepartDate >= @2)";
+    DateTime EXPDate = DateTime.Now.Date.AddDays(-_Fn.DAY_TO_EXPIRE);
+    var iUnpaidCount = db.QueryValue(sqlQUnpaidCount, id, EXPDate, DateTime.Now.Date);
+    iUnpaidCount = (iUnpaidCount is DBNull ? 0 : iUnpaidCount);
+    //An array to set classname for table row
+    string[] strClassName = {"EvenRow", "OddRow"};
+}
+
+<h1 align="center">@PageData["Title"]</h1>
+@if(UserTickets.Count() < 1)
+{
+    @:This user hasn't booked any tickets yet.
+}
+else
+{
+    <text>
+        <ul>
+            <li>Total: @(iBookedCount != null ? iBookedCount : 0)</li>
+            <li>Expired: @(iBookedCount - iUnpaidCount - iPaidCount)</li>
+            <li>Unpaid: @(iUnpaidCount != null ? iUnpaidCount : 0)</li>
+            <li>Paid: @(iPaidCount != null ? iPaidCount : 0)</li>
+        </ul>
+        <div align="center">
+            <div @if(!_Fn.IsIELow()){<text>class="DivTable"</text>}>
+                <table class="MyTable">
+                    <tr class="TableSmallHeader">
+                        <th>No.</th>
+                        <th>Depart Station</th>
+                        <th>Arrive Station</th>
+                        <th>Seat Type</th>
+                        <th>Depart Date</th>
+                        <th>Book Date</th>
+                        <th>Expired Date</th>
+                        <th>Status</th>
+                        <th>Amount</th>
+                        <th>Total Price</th>
+                        <th>Operation</th>
+                    </tr>
+                    @{int i = 0;}
+                    @foreach(var ticket in UserTickets)
+                    {            
+                        i++;
+                        DateTime ExpireDate = ticket.BookDate.AddDays(@_Fn.DAY_TO_EXPIRE);
+                        if (DateTime.Compare(ExpireDate.Date, ticket.DepartDate.Date) > 0)
+                        {
+                            ExpireDate = ticket.DepartDate.AddDays(1);
+                        }
+                        bool expired = _Fn.IsExpired(ticket.BookDate, ticket.DepartDate);
+                        bool paid = ticket.Paid != 0 ? true : false;
+                        expired = paid ? false : expired;
+                        string DeleteURL = "/Page/_DeleteTicket.cshtml?id=" + ticket.TicketID + "&url=" + Request.FilePath;                
+                        <text>
+                            <tr class=@strClassName[i%2] onMouseOut="this.className='@strClassName[i%2]'" onMouseOver="this.className='TableHilightRow'">
+                                <td>@i</td>
+                                <td>@ticket.DepartStation</td>
+                                <td>@ticket.ArriveStation</td>
+                                <td>@ticket.SeatName</td>
+                                <td>@ticket.DepartDate.ToShortDateString()</td>
+                                <td>@ticket.BookDate.ToShortDateString()</td>                        
+                                <td @(expired ? "class=Expired" : "")>@ExpireDate.ToShortDateString()</td>
+                                <td @(paid ? "class=Paid" : (expired ? "class=Expired" : ""))>@(paid ? "Paid" : (expired ? "Expired" : "New"))</td>
+                                <td>@ticket.Quantity</td>
+                                <td>@(ticket.Price*ticket.Quantity)</td>
+                                <td>
+                                    @if(expired)
+                                    {
+                                        <text>
+                                            <input type="button" value="Delete" onclick="DeleteTicket(@ticket.TicketID);"/>
+                                        </text>
+                                    }
+                                    else if (!paid)
+                                    {
+                                        <text>
+                                            <input type="button" value="Mark Paid" onclick="MarkTicket(@ticket.TicketID, 1)"/>
+                                        </text>
+                                    }
+                                    else if (!_Fn.IsExpired(ticket.BookDate, ticket.DepartDate))
+                                    {
+                                        <text>
+                                            <input type="button" value="Unmark Paid" onclick="MarkTicket(@ticket.TicketID, 0)"/>
+                                        </text>
+                                    }
+                                </td>                        
+                            </tr>
+                        </text>
+                    }
+                </table>
+            </div>
+        </div>
+    </text>
+}
+
+<script type="text/javascript">
+<!--
+    function DeleteTicket(ticketID)
+    {
+        var r = confirm("Are you sure?");
+        if (r==true)
+        {
+            window.location="/Page/DeleteTicket.cshtml?id=" + ticketID + "&url=@Request.FilePath?id=" + @id;
+        }
+    }
+    function MarkTicket(ticketID, mark)
+    {
+        window.location="MarkTicket.cshtml?Tid=" + ticketID + "&mark=" + mark + "&url=@Request.FilePath?id=" + @id;
+    }
+//-->
+</script>

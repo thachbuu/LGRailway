@@ -1,0 +1,294 @@
+﻿@{
+    //Set page title
+    PageData["Title"] = "My Ticket";
+    //Force login
+    if (!WebSecurity.IsAuthenticated)
+    {
+        Response.Redirect("~/Account/Login.cshtml?ReturnUrl=" + Request.FilePath);
+    }
+    //Set number of result per page
+    const int iResultPerPage = 10;    
+    //Open the database
+    var db = Database.Open("MyDB");
+    //Delete the requested ID
+    if(IsPost)
+    {
+        int DelID = Request.Form["DeleteID"].AsInt();
+        if (DelID > 0)
+        {
+            string sqlDelete = "DELETE FROM Ticket WHERE TicketID=@0";
+            db.Execute(sqlDelete, DelID);
+        }
+    }
+    //Query the info of this user
+    string strFilter = @"SELECT 
+                            T2.StationIDSrc, T2.StationIDDst, 
+                            T1.TicketID, T1.CustomerID, T1.TrainTimeID, T1.SeatID, T1.Price, T1.Quantity, T1.DepartDate, T1.BookDate, T1.Paid, 
+                            S1.StationName AS DepartStation, S2.StationName AS ArriveStation, 
+                            ST.Description AS SeatName 
+                        FROM TrainTime AS T2 
+                            INNER JOIN Ticket AS T1 ON (T1.TrainTimeID = T2.Id) 
+                            INNER JOIN Stations AS S1 ON (S1.StationID=T2.StationIDSrc) 
+                            INNER JOIN Stations AS S2 ON (S2.StationID=T2.StationIDDst) 
+                            INNER JOIN Seats AS ST ON (ST.SeatID=T1.SeatID) 
+                        WHERE T1.CustomerID=@0{0}{1}{2}{3} 
+                        ORDER BY T1.TicketID DESC";
+    //Query the number of ticket this user currently books
+    string sqlQNewTicketCount = "SELECT SUM(Quantity) FROM Ticket WHERE CustomerID=@0 AND Paid=0 AND (BookDate>@1 AND DepartDate >= @2)";
+    DateTime EXPDate = DateTime.Now.Date.AddDays(-_Fn.DAY_TO_EXPIRE);
+    var iNewTicket = db.QueryValue(sqlQNewTicketCount, WebSecurity.CurrentUserId, EXPDate, DateTime.Now.Date);
+    iNewTicket = (iNewTicket is DBNull ? 0 : iNewTicket);    
+    //An array to set classname for table row
+    string[] strClassName = {"EvenRow", "OddRow"};
+}
+
+@{
+    int iDpStation = Request.Form["FilterDpStation"].AsInt();//ID of the depart station
+    int iArStation = Request.Form["FilterArStation"].AsInt();//ID of the arrive station
+    string strDpDate = Request.Form["FilterDpDate"];//Depart date
+    if (strDpDate == null)
+    {
+        strDpDate = "";
+    }
+    int iStatus = Request.Form["FilterStatus"].AsInt();//Status
+    
+    string f0 = "", f1 = "", f2 = "", f3 = "";//strings to replace {0} {1}...
+    
+    bool IgnoreDate = true;//If the depart date is provided
+    bool IsValidDate = true;//If the depart date provided is invalid
+    DateTime DpDate;    
+    
+    if(IsPost)
+    {
+        //Validate the depart date
+        if (strDpDate.Length > 0)
+        {
+            IgnoreDate = false;    
+            
+            if (strDpDate.Length > 7)
+            {                
+                if (!DateTime.TryParse(strDpDate, out DpDate))
+                {
+                    IsValidDate = false;
+                }
+            }
+            else
+            {
+                IsValidDate = false;
+            }
+        }
+        
+        //If a depart station is selected
+        if (iDpStation > 0)
+        {
+            f0 = " AND T2.StationIDSrc=" + iDpStation;
+        }
+        
+        //If an arrive station is selected
+        if (iArStation > 0)
+        {
+            f1 = " AND T2.StationIDDst=" + iArStation;
+        }
+        
+        //If a valid depart date is provided
+        if (IsValidDate && !IgnoreDate)
+        {                
+            f2 = " AND T1.DepartDate='" + strDpDate + "'";
+        }
+        
+        //If a status is selected
+        if (iStatus > 0)
+        {
+            if (iStatus == 3)
+            {
+                f3 = " AND T1.Paid>0";
+            }
+            else
+            {
+                if (iStatus == 1)
+                {
+                    f3 = " AND ((T1.DepartDate<'" + DateTime.Now.ToShortDateString() + "' OR T1.BookDate<='" + DateTime.Now.AddDays(-@_Fn.DAY_TO_EXPIRE).ToShortDateString() + "') AND T1.Paid=0)";
+                }
+                else if (iStatus == 2)
+                {
+                    f3 = " AND ((T1.DepartDate>='" + DateTime.Now.ToShortDateString() + "' AND T1.BookDate>'" + DateTime.Now.AddDays(-@_Fn.DAY_TO_EXPIRE).ToShortDateString() + "') AND T1.Paid=0)";
+                }
+            }
+        }
+    }
+    string sqlQCheckUserFilter = string.Format(strFilter, f0, f1, f2, f3);
+    var UserTickets = db.Query(sqlQCheckUserFilter, WebSecurity.CurrentUserId);
+    int iResultCount = UserTickets.Count();
+    int iPageCount = iResultCount / iResultPerPage;
+}
+
+<h1 align="center">Manage ticket</h1>
+@if(iResultCount < 1 && !IsPost)
+{
+    @:You haven't booked any tickets yet.
+}
+else
+{
+    <text>
+        <div class="message" style="float:left;">
+            <strong>Note:</strong>
+            <li>You currently book @iNewTicket @(iNewTicket > 1 ? "tickets" : "ticket"), you can book @(10 - iNewTicket > 0 ? 10 - iNewTicket : "no") more.</li>
+            @if(iNewTicket > 0)
+            {
+                @:<li>Remember to get your @(iNewTicket > 1 ? "tickets" : "ticket") <strong>before</strong> the expired date.</li>
+            }
+        </div>
+        
+        <form method="post" action="" name="FilterForm">
+        <!-- The filter is added here -->
+        @if(iResultCount >= _Fn.MIN_TO_FILTER || IsPost)
+        {        
+            <div class="Filter">
+                    <input type="hidden" name="DeleteID" value="0" id="HiddenDeleteID"/>
+                <div style="float: left;">
+                    <strong>Filters:@if(iResultCount == 0 && IsPost){<text> <span style="color: Red;">No result found!</span></text>}</strong>
+                </div>
+                <div align="right">
+                    <input type="submit" value="Apply filter" style="margin-right: 5px; margin-bottom: 5px;"/>
+                </div>
+                <table>
+                    <tr align="left">
+                        <th>Depart Station</th>
+                        <th>Arrive Station</th>
+                        <th>Depart Date</th>
+                        <th>Status</th>
+                    </tr>
+                    <tr>
+                        @{
+                            string sqlQAllStationName = "SELECT StationName, StationID FROM Stations ORDER BY StationID";
+                            var StationNames = db.Query(sqlQAllStationName);
+                        }
+                        <td>
+                            <select name="FilterDpStation">
+                                <option value="0">Ignore</option>
+                                @foreach(var row in StationNames)
+                                {
+                                    <option value="@row.StationID" @if(iDpStation == row.StationID){<text>selected="selected"</text>}>@row.StationName</option>
+                                }
+                            </select>
+                        </td>
+                        <td>
+                            <select name="FilterArStation">
+                                <option value="0">Ignore</option>
+                                @foreach(var row in StationNames)
+                                {
+                                    <option value="@row.StationID" @if(iArStation == row.StationID){<text>selected="selected"</text>}>@row.StationName</option>
+                                }
+                            </select>
+                        </td>
+                        <td>
+                            <input name="FilterDpDate" type="text" maxlength="10" size="6" title="Empty = Ignore" value='@strDpDate'/>
+                        </td>
+                        <td>
+                            <select name="FilterStatus">
+                                <option value="0">Ignore</option>
+                                <option value="1" @if(iStatus == 1){<text>selected="selected"</text>}>Expired</option>
+                                <option value="2" @if(iStatus == 2){<text>selected="selected"</text>}>New</option>
+                                <option value="3" @if(iStatus == 3){<text>selected="selected"</text>}>Paid</option>
+                            </select>
+                        </td>
+                    </tr>
+                </table>
+                @if(!IsValidDate && !IgnoreDate)
+                {
+                    <text>
+                        <div class="error message">
+                            The date format is wrong, date filter is ignored.
+                            <br/>Example of a proper date: Today is @DateTime.Now.ToShortDateString()
+                        </div>
+                            
+                    </text>
+                }
+            </div>
+        }
+        <!-- End filter -->
+        @if(iResultCount > 0)
+        {
+            <div align="center" class="DivCenter">            
+                <div @if(!_Fn.IsIELow()){<text>class="DivTable"</text>}>
+                    <table class="MyTable">
+                        <tr class="TableSmallHeader">
+                            <th>No.</th>
+                            <th>Depart Station</th>
+                            <th>Arrive Station</th>
+                            <th>Seat Type</th>
+                            <th>Depart Date</th>
+                            <th>Book Date</th>
+                            <th>Expired Date</th>
+                            <th>Status</th>
+                            <th>Amount</th>
+                            <th>Total Price</th>
+                            <th>Operation</th>
+                        </tr>
+                        @{int i = 0;}
+                        @foreach(var ticket in UserTickets)
+                        {             
+                            i++;
+                            DateTime ExpireDate = ticket.BookDate.AddDays(@_Fn.DAY_TO_EXPIRE);
+                            if (DateTime.Compare(ExpireDate.Date, ticket.DepartDate.Date) > 0)
+                            {
+                                ExpireDate = ticket.DepartDate.AddDays(1);
+                            }
+                            bool expired = _Fn.IsExpired(ticket.BookDate, ticket.DepartDate);
+                            bool paid = ticket.Paid != 0 ? true : false;
+                            expired = paid ? false : expired;
+                            string DeleteURL = "/Page/_DeleteTicket.cshtml?id=" + ticket.TicketID + "&url=" + Request.FilePath;
+                            
+                            <text>
+                                <tr class=@strClassName[i%2] onMouseOut="this.className='@strClassName[i%2]'" onMouseOver="this.className='TableHilightRow'">
+                                    <td>@i</td>
+                                    <td>@ticket.DepartStation</td>
+                                    <td>@ticket.ArriveStation</td>
+                                    <td>@ticket.SeatName</td>
+                                    <td>@ticket.DepartDate.ToShortDateString()</td>
+                                    <td>@ticket.BookDate.ToShortDateString()</td>                        
+                                    <td @(expired ? "class=Expired" : "")>@ExpireDate.ToShortDateString()</td>
+                                    <td @(paid ? "class=Paid" : (expired ? "class=Expired" : ""))>@(paid ? "Paid" : (expired ? "Expired" : "New"))</td>
+                                    <td>@ticket.Quantity</td>
+                                    <td>@(ticket.Price*ticket.Quantity)</td>
+                                    <td>
+                                        @if(!paid)
+                                        {
+                                            <input type="button" value="@(expired ? "Delete" : "Cancel")" onclick="DeleteTicket(@ticket.TicketID);"/>
+                                        }
+                                    </td>                        
+                                </tr>
+                            </text>
+                        }
+                    </table>
+                </div>
+            </div>     
+        }
+        else
+        {
+            <div align="center">
+                <div class="error message" style="width: 80%;">
+                    Sorry, can't find any results that match your filters.
+                    <br/>Please change the filters and try again.
+                </div>
+            </div>
+        }
+        </form>
+    </text>
+}
+
+<script type="text/javascript">
+<!--
+    function DeleteTicket(id)
+    {
+        var r = confirm("Are you sure?");
+        if (r==true)
+        {
+            document.FilterForm.DeleteID.value = id;
+            document.FilterForm.submit();
+            return true;
+        }
+        return false;
+    }
+//-->
+</script>

@@ -1,0 +1,76 @@
+﻿@{
+    PageData["Title"] = "FAQ";
+    int i = 1;
+}
+
+<h1 align="center">Frequently Asked Questions</h1>
+<ol>
+    <li class="spacing"><a href="#@(i++)">I want to continue developing this website myself, what tool should I use to do this?</a></li>
+    <li class="spacing"><a href="#@(i++)">How to use a different email address/server for the website?</a></li>
+    <li class="spacing"><a href="#@(i++)">How to retain the database when switching to another build?</a></li>
+    <li class="spacing"><a href="#@(i++)">How to change the number of ticket a user can book?</a></li>
+    <li class="spacing"><a href="#@(i++)">How to change the number of day after which a ticket is expired?</a></li>
+    <li class="spacing"><a href="#@(i++)">How to make the filter in My Ticket page appear even when there's only one result?</a></li>
+    <li class="spacing"><a href="#@(i++)">How to change the ticket quota?</a></li>
+    <li class="spacing"><a href="#@(i++)">How to set different ticket quota for each train?</a></li>
+    <li class="spacing"><a href="#@(i++)">I want to change ticket price to USD, what should I do?</a></li>
+    <li class="spacing"><a href="#@(i++)">Why my IP is tracked (or not tracked)?</a></li>
+    <li class="spacing"><a href="#@(i++)">After I reset time tracking data, the users see error on their browsers. How to fix this?</a></li>
+</ol>
+<h1 align="center">Answers</h1>
+<ol>
+    @{i=1;}
+    <li id="@(i++)">
+        <h4>I want to continue developing this website myself, what tool should I use to do this?</h4>
+        <p>Thank you for asking this. You can use WebMatrix to develop this website. It's a free web development tool from Microsoft, just google it.</p>
+    </li>
+    <li id="@(i++)">
+        <h4>How to use a different email address/server for the website?</h4>
+        <p>
+            _Open "_AppStart.cshtml" in the root of web folder and change the info of WebMail inside.
+            <br/>_It's quite easy, there's nothing to explain. Just be extra careful with the file, any mess-up and the whole website will fail to run.
+        </p>
+    </li>
+    <li id="@(i++)"><h4>How to retain the database when switching to another build?</h4>
+        <p>Delete/Rename "App_Data" folder of the new build and copy that folder from the old build.</p>
+    </li>
+    <li id="@(i++)">
+        <h4>How to change the number of ticket a user can book?</h4>
+        <p>Open "_Fn.cshtml" in "App_Code" folder and change MAX_TICKET.</p>
+    </li>
+    <li id="@(i++)">
+        <h4>How to change the number of day after which a ticket is expired?</h4>
+        <p>Open "_Fn.cshtml" in "App_Code" folder and change DAY_TO_EXPIRE.</p>
+    </li>
+    <li id="@(i++)">
+        <h4>How to make the filter in My Ticket page appear even when there's only one result?</h4>
+        <p>Open "_Fn.cshtml" in "App_Code" folder and change MIN_TO_FILTER. Please note that it won't appear if there's no result, regardless of its value.</p>
+    </li>  
+    <li id="@(i++)">
+        <h4>How to change the ticket quota?</h4>
+        <p>Open "_Fn.cshtml" in "App_Code" folder and change TICKET_PER_TRAIN.</p>
+    </li>    
+    <li id="@(i++)">
+        <h4>How to set different ticket quota for each train?</h4>
+        <p>
+            _Open TrainTime table in the database and add a Quota column.
+            <br/>_Set the quota for each train yourself.
+            <br/>_Open "BookTicketPage.cshtml", replace any place using TICKET_PER_TRAIN with the quota you set (of course you have to query it).
+        </p>
+    </li>
+    <li id="@(i++)"><h4>I want to change ticket price to USD, what should I do?</h4>
+        <p>
+            _Open "_Fn.cshtml" in "App_Code" folder and change PRICE_VALUE to 0.05 or a suitable value.
+            <br/>_Open "TicketPricePage.cshtml" in "Page" folder and change "VND" to "USD" (search for the string, it should appear only once).
+            <br/>_This only applies to tickets booked after this point so it will cause big confusion in My Ticket page. Reset ticket data to avoid this.
+        </p>
+    </li>
+    <li id="@(i++)">
+        <h4>Why my IP is tracked (or not tracked)?</h4>
+        <p>Admin user won't be tracked anymore after logging in. Localhost IP won't be tracked either.</p>
+    </li>
+    <li id="@(i++)">
+        <h4>After I reset time tracking data, the users see error on their browsers. How to fix this?</h4>
+        <p>You should reset time tracking data when no one but you are using the website or errors will occur. Closing and reopening their web browsers can fix it.</p>
+    </li>
+</ol>

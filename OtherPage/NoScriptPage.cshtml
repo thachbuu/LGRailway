@@ -1,0 +1,16 @@
+﻿@{
+    string url = Request["redirect"];
+}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <link rel="stylesheet" type="text/css" href="Unsupport.css" />
+        <title>No Java script</title>
+    </head>
+    <body>
+        <h1>Your web browser doesn't have Javascript enabled</h1>
+        <p>Please enable Javascript in your web browser to view this website.</p>
+        <p><a href="@url">Click here</a> after you have enabled Javascript.</p>
+    </body>
+</html>

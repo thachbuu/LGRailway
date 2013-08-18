@@ -1,0 +1,47 @@
+﻿<div id="banner">
+    <img src="/Image/banner.jpg" alt="The banner should be here" class="banner"/>
+</div>
+<div class="account">
+        @if(!WebSecurity.IsAuthenticated)
+        {
+                @:Welcome guest<br/>
+        }
+        else
+        {
+            <text>
+                Welcome @WebSecurity.CurrentUserName<br/>
+            </text>        
+        }
+    </div>
+<div id="menu">
+    <ul>
+        <li @if(Request.FilePath.Contains("/Page/HomePage") || Request.FilePath.Contains("/Page/InvalidPage")) {<text>class="selected"</text>}><a href="@Href("~/")"><span>Home</span></a></li>
+        <li @if(Request.FilePath.Contains("/Page/FAQ")) {<text>class="selected"</text>}><a href="/Page/FAQ.cshtml"><span>FAQ</span></a></li>
+        <li @if(Request.FilePath.Contains("/Page/Contact")) {<text>class="selected"</text>}><a href="/Page/Contact.cshtml"><span>Contact</span></a></li>
+        <li @if(Request.FilePath.Contains("/Page/TrainTimeListPage")) {<text>class="selected"</text>}><a href="@Href("~/Page/TrainTimeListPage.cshtml")"><span>Timetable</span></a></li>
+        <li @if(Request.FilePath.Contains("/Page/TrainPriceListPage") || Request.FilePath.Contains("/Page/TicketPricePage")) {<text>class="selected"</text>}><a href="/Page/TrainPriceListPage.cshtml"><span>Ticket price</span></a></li>
+        @if(_Fn.IsAdmin() == false)
+        {
+            <li @if(Request.FilePath.Contains("/Page/BookTicketPage") || Request.FilePath.Contains("/Page/SuccessPage")) {<text>class="selected"</text>}><a href="/Page/BookTicketPage.cshtml"><span>Book ticket</span></a></li>
+        }
+        @if(WebSecurity.IsAuthenticated)
+        {
+            if(_Fn.IsAdmin() == false)
+            {
+                <li @if(Request.FilePath.Contains("/Page/ManageTicket")) {<text>class="selected"</text>}><a href="/Page/ManageTicket.cshtml"><span>My ticket</span></a></li>
+            }
+            else
+            {
+                <li @if(Request.FilePath.Contains("/Admin/")) {<text>class="selected"</text>}><a href="/Admin/AdminPage.cshtml" style="color:Red"><span>Admin page</span></a></li>
+            }
+            <li @if(Request.FilePath.Contains("/Account/ChangePassword")) {<text>class="selected"</text>}><a href="/Account/ChangePassword.cshtml"><span>Change password</span></a></li>
+            <li><a href="/Account/Logout"><span>Log out</span></a></li>
+        }
+        else
+        {
+            <li @if(Request.FilePath.Contains("/Account/Register") || Request.FilePath.Contains("/Account/Confirm") || Request.FilePath.Contains("/Account/Thanks")) {<text>class="selected"</text>}><a href="/Account/Register.cshtml"><span>Register</span></a></li>
+            <li @if(Request.FilePath.Contains("/Account/Login") || Request.FilePath.Contains("/Account/ForgotPassword") || Request.FilePath.Contains("/Account/PasswordReset")) {<text>class="selected"</text>}><a href="/Account/Login.cshtml"><span>Login</span></a></li>
+        }
+    </ul>
+    
+</div>

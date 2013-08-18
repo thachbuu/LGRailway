@@ -1,0 +1,27 @@
+﻿@{
+    int TicketID = Request["Tid"].AsInt();
+    if (TicketID == 0)
+    {
+        Response.Redirect("InvalidPage.cshtml");
+    }
+    
+    string ReturnUrl = Request["url"];
+    int iMark = Request["mark"].AsInt();
+    //iMark must be 0 or 1
+    if (iMark != 0)
+    {
+        iMark = 1;
+    }
+    
+    //Mark the ticket
+    string sqlMark = "UPDATE Ticket SET Paid=@0 WHERE TicketID=@1";
+    var db = Database.Open("MyDB");
+    db.Execute(sqlMark, iMark, TicketID);
+    
+    //Return to the page
+    if (ReturnUrl.IsEmpty())
+    {
+        ReturnUrl = "AdminPage.cshtml";
+    }
+    Response.Redirect(ReturnUrl);
+}

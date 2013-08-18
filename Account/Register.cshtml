@@ -1,0 +1,242 @@
+﻿@{
+    // Set the layout page and page title
+    Page["Title"] = "Register an Account";
+    
+    //If the user already logged in, redirect to Home page
+    if (WebSecurity.IsAuthenticated)
+    {
+        Response.Redirect("~/");
+    }
+
+    // Initialize variables
+    var email = "";
+    var password = "";
+    var confirmPassword = "";
+    var pidNumber = "";
+
+    // Validation variables
+    var isValid = true;
+    var emailErrorMessage = "";
+    var passwordErrorMessage = "";
+    var confirmPasswordMessage = "";
+    var pidErrorMessage = "";
+    var accountCreationErrorMessage = "";
+
+    // If this is a POST request, validate and process data
+    if (IsPost)
+    {
+        email = Request.Form["email"].Trim();
+        password = Request.Form["password"].Trim();
+        confirmPassword = Request.Form["confirmPassword"].Trim();
+        pidNumber = Request.Form["pid"].Trim();
+
+        // Validate the user's email address
+        if (email.Length < _Fn.MIN_NAME_LEN || email.Length > _Fn.MAX_NAME_LEN)
+        {
+            emailErrorMessage = "Invalid email length";
+            isValid = false;
+        }
+        else
+        {
+            if (!_Fn.IsValidEmail(email))
+            {
+                emailErrorMessage = "Invalid email address";
+                isValid = false;
+            }
+        }
+
+        // Validate the user's password and password confirmation
+        if (password.Length < _Fn.MIN_PASSWORD_LEN || password.Length > _Fn.MAX_PASSWORD_LEN)
+        {
+            passwordErrorMessage = "Invalid password length";
+            isValid = false;
+        }
+
+        if (password != confirmPassword)
+        {
+            confirmPasswordMessage = "The two passwords do not match";
+            isValid = false;
+        }
+        
+        // Validate the PID number
+        if (pidNumber.Length < _Fn.MIN_ID_LEN || pidNumber.Length > _Fn.MAX_ID_LEN)
+        {
+            pidErrorMessage = "Invalid ID length";
+            isValid = false;
+        }
+
+        // If all information is valid, create a new account
+        if (isValid)
+        { 
+            // Insert a new user into the database
+            var db = Database.Open("MyDB");
+
+            // Check if user already exists
+            var user = db.QuerySingle("SELECT Email FROM Customers WHERE LOWER(Email) = LOWER(@0)", email);
+            if (user == null) 
+            {
+                // Insert email into the profile table
+                db.Execute("INSERT INTO Customers (Email, PIDNumber) VALUES (@0, @1)", email, pidNumber);
+
+                // Create and associate a new entry in the membership database.
+                // If successful, continue processing the request
+                try 
+                {
+                    bool requireEmailConfirmation = !WebMail.SmtpServer.IsEmpty();
+                    var token = WebSecurity.CreateAccount(email, password, requireEmailConfirmation);
+                    
+                    if (requireEmailConfirmation)
+                    {
+                        var hostUrl = Request.Url.GetComponents(UriComponents.SchemeAndServer, UriFormat.Unescaped);
+                        var confirmationUrl = hostUrl + VirtualPathUtility.ToAbsolute("~/Account/Confirm?confirmationCode=" + HttpUtility.UrlEncode(token));
+
+                        WebMail.Send(
+                            to: email,	
+                            subject: "Please confirm your account", 
+                            body: "Your confirmation code is: " + token + ". Visit <a href=\"" + confirmationUrl + "\">" + confirmationUrl + "</a> to activate your account."
+                        ); 
+                    }
+                    
+                    if (requireEmailConfirmation) 
+                    {
+                        // Thank the user for registering and let them know an email is on its way
+                       Response.Redirect("~/Account/Thanks.cshtml");
+                    }
+                    else
+                    {
+                        // Navigate back to the homepage and exit
+                        WebSecurity.Login(email, password);
+                        Response.Redirect("~/");
+                    }
+                } 
+                catch (System.Web.Security.MembershipCreateUserException e)
+                {
+                    isValid = false;
+                    accountCreationErrorMessage = e.ToString();
+                }
+            } 
+            else
+            {
+                // User already exists
+                isValid = false;
+                accountCreationErrorMessage = "This email address is already in use.";
+            }
+        }    
+    }
+}
+
+<h1 align="center">Create account</h1>
+<p>
+    <br/>Please fill the form below to create a new account or <a href="/Account/Login.cshtml">login</a> if you already have one.
+    <br/>If you already created an account but haven't confirmed it yet, go <a href="Confirm.cshtml">here</a> and enter the confirmation code which can be found in your email.
+    <br/>Please make sure your PID/Passport Number is correct. It can't be changed.
+</p>
+
+@* If at least one validation error exists, notify the user *@
+@if (!isValid) 
+{
+   <p class="message error">
+    @if (accountCreationErrorMessage.IsEmpty())
+        {
+        @:There're errors in the form. Please correct the errors and try again.
+    } 
+    else 
+    {
+        @accountCreationErrorMessage
+    }
+   </p>
+}
+<form method="post" action="" id="RegisterForm" onsubmit="return SubmitForm();">
+    <fieldset>
+        <legend>Sign-up Form</legend>
+        <ol>
+            <li class="email">
+                <label for="email">Email (@_Fn.MIN_NAME_LEN - @_Fn.MAX_NAME_LEN characters):</label>
+                <input type="text" id="email" name="email" title="You'll use this to login" value="@email" onchange="this.value=RemoveTag(this.value);" maxlength="100" @if(!emailErrorMessage.IsEmpty()){<text>class="error-field"</text>} />
+                @* Write any email validation errors to the page *@
+                @if (!emailErrorMessage.IsEmpty()) {
+                    <label for="email" class="validation-error">@emailErrorMessage</label>
+                }
+            </li>
+            <li class="password">
+                <label for="password">Password (@_Fn.MIN_PASSWORD_LEN - @_Fn.MAX_PASSWORD_LEN characters):</label>
+                <input type="password" id="password" name="password" title="You'll use this to login" maxlength="100" onchange="this.value=RemoveTag(this.value);" @if(!passwordErrorMessage.IsEmpty()){<text>class="error-field"</text>} />
+                @* Write any password validation errors to the page *@
+                @if (!passwordErrorMessage.IsEmpty()) {
+                    <label for="password" class="validation-error">@passwordErrorMessage</label>
+                }
+            </li>
+            <li class="confirm-password">
+                <label for="confirmPassword">Confirm Password:</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" title="Must match the password above" onchange="this.value=RemoveTag(this.value);" maxlength="100" @if(!confirmPasswordMessage.IsEmpty()){<text>class="error-field"</text>} />
+                @* Write any password validation errors to the page *@
+                @if (!confirmPasswordMessage.IsEmpty()) {
+                    <label for="confirmPassword" class="validation-error">@confirmPasswordMessage</label>
+                }
+            </li>
+            <li class="pid-number">
+                <label for="pid">PID/Passport number (@_Fn.MIN_ID_LEN - @_Fn.MAX_ID_LEN characters):</label>
+                <input type="text" id="pid" name="pid" title="You'll use this to take the ticket" maxlength="100" onchange="this.value=RemoveTag(this.value);" @if(!pidErrorMessage.IsEmpty()){<text>class="error-field"</text>} />
+                @* Write any password validation errors to the page *@
+                @if (!pidErrorMessage.IsEmpty()) {
+                    <label for="pid" class="validation-error">@pidErrorMessage</label>
+                }
+            </li>
+        </ol>
+        <p class="form-actions">
+            <input type="submit" value="Register" title="Register"/>
+        </p>
+    </fieldset>
+</form>
+
+<script type="text/javascript">
+<!--
+function RemoveTag(s)
+{
+    var a = s.replace("<", "");
+    a = a.replace(">", "");
+    a = RemoveSQL(a);
+    return a;
+}
+
+function RemoveSQL(s)
+{
+    var a = s.replace(/#/g, '');
+    a = a.replace(/&/g, '');
+    a = a.replace(/%/g, '');
+    a = a.replace(/ AND /g, '');
+    a = a.replace(/ FROM /g, '');
+    a = a.replace(/ WHERE /g, '');
+    a = a.replace(/ OR /g, '');
+    a = a.replace(/ UNION /g, '');
+    a = a.replace(/SELECT /g, '');
+    a = a.replace(/'/g, '');
+    if (a.length < s. length)
+    {
+        alert("Invalid input data detected and filtered.");
+    }
+    return a;
+}
+
+function SubmitForm()
+{
+    var s = document.getElementById("email").value;
+    s = RemoveSQL(s);
+    document.getElementById("email").value = s;
+    
+    s = document.getElementById("password").value;
+    s = RemoveSQL(s);
+    document.getElementById("password").value = s;
+    
+    s = document.getElementById("confirmPassword").value;
+    s = RemoveSQL(s);
+    document.getElementById("confirmPassword").value = s;
+    
+    s = document.getElementById("pid").value;
+    s = RemoveSQL(s);
+    document.getElementById("pid").value = s;
+    
+    document.getElementById("RegisterForm").submit();
+}
+//-->
+</script>

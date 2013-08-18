@@ -1,0 +1,60 @@
+﻿@{
+    PageData["Title"] = "FAQ";
+    int i = 1;
+}
+
+<h1 align="center">Frequently Asked Questions</h1>
+<ol>
+    <li class="spacing"><a href="#@(i++)">How to book a ticket?</a></li>
+    <li class="spacing"><a href="#@(i++)">Why do my tickets get expired?</a></li>
+    <li class="spacing"><a href="#@(i++)">How to pay for my tickets?</a></li>
+    <li class="spacing"><a href="#@(i++)">How many tickets can I book?</a></li>
+    <li class="spacing"><a href="#@(i++)">I don't see the filter in My Ticket page, why?</a></li>    
+    <li class="spacing"><a href="#@(i++)">I want to change the station, date, ... on my ticket, what should I do?</a></li>
+    <li class="spacing"><a href="#@(i++)">I want to use Opera, Safari, smart phone browsers, ... to access the website but can't. Can you support those?</a></li>
+    <li class="spacing"><a href="#@(i++)">I want to ask other questions.</a></li>
+</ol>
+<h1 align="center">Answers</h1>
+<ol>
+    @{i=1;}
+    <li id="@(i++)">
+        <h4>How to book a ticket?</h4>
+        <p>
+            _First you need to <a href="/Account/Register.cshtml">create an account</a>.
+            <br/>_Next, login and go to <a href="/Page/BookTicketPage">Book Ticket page</a> to book one.
+        </p>
+    </li>
+    <li id="@(i++)">
+        <h4>Why do my tickets get expired?</h4>
+        <p>
+            _After booking, you must pay for the tickets before the expired date. Your tickets will get expired <strong>on</strong> the expired date.
+            <br/>_Your tickets will also get expired <strong>after</strong> the depart date, regardless of expired date.
+        </p>
+    </li>
+    <li id="@(i++)">
+        <h4>How to pay for my tickets?</h4>
+        <p>Please contact the web admin for more details.</p>
+    </li>
+    <li id="@(i++)">
+        <h4>How many tickets can I book?</h4>
+        <p>You can book up to 10 tickets. After your tickets have been paid for or expired, you can book some more.</p>
+    </li>
+    <li id="@(i++)"><h4>I don't see the filter in My Ticket page, why?</h4>
+        <p>
+            _If the table in My Ticket page has less than @_Fn.MIN_TO_FILTER rows, I don't think you'll need to filter.
+            <br/>_If it has 6 rows or more and the filter still refuses to appear, please kindly report this to the web admin.
+        </p>
+    </li>    
+    <li id="@(i++)">
+        <h4>I want to change the station, date, ... on my ticket, what should I do?</h4>
+        <p>Cancel that ticket and book another one.</p>
+    </li>    
+    <li id="@(i++)">
+        <h4>I want to use Opera, Safari, smart phone browsers, ... to access the website but can't. Can you support those?</h4>
+        <p>Sorry, but no.</p>
+    </li>
+    <li id="@(i++)">
+        <h4>I want to ask other questions.</h4>
+        <p>Please contact the web admin.</p>
+    </li>
+</ol>

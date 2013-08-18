@@ -1,0 +1,86 @@
+﻿@{//Set page title
+    PageData["Title"] = "Success";
+    
+    int TicketID = Request["id"].AsInt();
+    //If the params are not correct, show an error page.
+    if (TicketID <= 0)
+    {
+        Response.Redirect("InvalidPage.cshtml");
+    }
+    
+    //Open the database
+    var db = Database.Open("MyDB");
+    //Query the info of this ticket
+    string sqlQCheckTicket = "SELECT * FROM Ticket WHERE TicketID=@0";
+    var TicketInfo = db.QuerySingle(sqlQCheckTicket, TicketID);
+    if (TicketInfo == null)
+    {
+        Response.Redirect("InvalidPage.cshtml");
+    }
+    
+    //Get the info
+    int CustomerID = (int)TicketInfo.CustomerID;
+    int TrainTimeID = (int)TicketInfo.TrainTimeID;
+    int SeatID = (int)TicketInfo.SeatID;
+    int Price = (int)TicketInfo.Price;
+    int Amount = (int)TicketInfo.Quantity;
+    int TotalPrice = Price * Amount;
+    DateTime DepartDate = TicketInfo.DepartDate;
+    DateTime BookDate = TicketInfo.BookDate;    
+    DateTime ExpireDate = BookDate.AddDays(_Fn.DAY_TO_EXPIRE);
+    
+    //If this ticket belongs  to another user, show an error page
+    if (CustomerID != WebSecurity.CurrentUserId)
+    {
+        Response.Redirect("InvalidPage.cshtml");
+    }
+    
+    //Get the station names
+    string sqlQStationInfo = "SELECT S1.StationName AS DepartStation, S2.StationName AS ArriveStation FROM TrainTime AS T INNER JOIN Stations AS S1 ON (S1.StationID=T.StationIDSrc) INNER JOIN Stations AS S2 ON (S2.StationID=T.StationIDDst) WHERE T.Id=@0";
+    var StationInfo = db.QuerySingle(sqlQStationInfo, TrainTimeID);
+    string DepartStation, ArriveStation;
+    DepartStation = StationInfo.DepartStation;
+    ArriveStation = StationInfo.ArriveStation;
+    
+    //Get the seat name
+    string sqlQSeatName = "SELECT Description FROM Seats WHERE SeatID=@0";
+    string SeatName = (string)db.QueryValue(sqlQSeatName, SeatID);
+    
+    //Get user PID number
+    string sqlQPID = "SELECT PIDNumber FROM Customers WHERE CustomerID=@0";
+    string PIDNumber = db.QueryValue(sqlQPID, CustomerID);
+}
+
+@{
+    
+}
+<h1 align="center">Ticket booked successfully!</h1>
+<ul>
+    <li>You have successfully booked your ticket.</li>
+    <li>You'll need to bring your ID card or passport to our office to get the ticket <strong>before</strong> the expired date.
+    <br/>Its number must match the one when you registered: <strong>@PIDNumber</strong></li>
+</ul>
+<div @if(!_Fn.IsIELow()){<text>class="DivTable"</text>}>
+    <table class="MyTable WideTable" align="center">
+        <tr class="TableSmallHeader">
+            <th>Depart Station</th>
+            <th>Arrive Station</th>
+            <th>Seat Type</th>
+            <th>Depart Date</th>
+            <th>Book Date</th>
+            <th>Expired Date</th>
+            <th>Amount</th>
+            <th>Total Price</th>
+        </tr>
+        <tr class="OddRow">
+            <td>@DepartStation</td>
+            <td>@ArriveStation</td>
+            <td>@SeatName</td>
+            <td>@DepartDate.ToShortDateString()</td>
+            <td>@BookDate.ToShortDateString()</td>
+            <td>@ExpireDate.ToShortDateString()</td>
+            <td>@Amount</td>
+            <td>@TotalPrice</td>
+        </tr>
+    </table>
+</div>

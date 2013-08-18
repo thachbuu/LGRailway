@@ -1,0 +1,184 @@
+﻿@functions{
+    //Global variables and functions are declared here
+    public const int MAX_TICKET = 10;//The number of ticket a user can book
+    public const double PRICE_VALUE = 1000;//Control the price
+    public const short MIN_NAME_LEN = 6, MIN_ID_LEN = 8, MIN_PASSWORD_LEN = 8;
+    public const short MAX_NAME_LEN = 32, MAX_ID_LEN = 20, MAX_PASSWORD_LEN = 64;
+    public const short DAY_TO_EXPIRE = 3;//Can't be less than 2
+    public const short MIN_TO_FILTER = 6;//Can't be less than 1
+    public const int TICKET_PER_TRAIN = 200;//Set this too high and the testers can never exceed its value
+    public const short IP_TO_TRACK = 50;//The max number of IP address to track time. When exceeded, one will get kicked out
+
+    //Return true if user's browser is supported
+    static public bool IsSupportedBrowser(ref string strInfo)
+    {
+        var browser = Request.Browser;
+        string name = browser.Browser.ToLower();
+        int version = browser.MajorVersion;
+        strInfo = browser.Browser + " " + version;
+        
+        switch (name)
+        {
+            case "chrome":
+                if (version < 18) return false;
+                break;
+            case "firefox":
+                if (version < 10) return false;
+                break;
+            case "ie":
+                if (version < 7) return false;
+                break;
+            default:
+                return false;
+        }
+        return true;
+    }
+    
+    //Return true if user's browser is Internet Explorer version <=8 (no CSS3)
+    static public bool IsIELow()
+    {
+        var browser = Request.Browser;
+        string name = browser.Browser.ToLower();
+        int version = browser.MajorVersion;
+        if (name == "ie" && version < 9)
+        {
+            return true;
+        }
+        return false;
+    }
+    
+    //Return true if user's browser is Internet Explorer
+    static public bool IsIE()
+    {
+        var browser = Request.Browser;
+        string name = browser.Browser.ToLower();        
+        if (name == "ie")
+        {
+            return true;
+        }
+        return false;
+    }
+    
+    //Return True if BookDate is expired
+    static public bool IsExpired(DateTime BookDate, DateTime DepartDate)
+    {
+        DateTime d1 = BookDate.AddDays(DAY_TO_EXPIRE);
+        if (DateTime.Compare(d1.Date, DateTime.Now.Date) > 0 && DateTime.Compare(DepartDate.Date, DateTime.Now.Date) >= 0)
+        {
+            return false;
+        }
+        return true;
+    }
+    
+    //Return True if the current user is admin user
+    static public bool IsAdmin()
+    {
+       return (WebSecurity.CurrentUserName == "admin");
+    }
+    
+    //Return True if the email address is valid
+    static public bool IsValidEmail(string email)
+    {
+        int iAtPos = email.IndexOf('@');
+        int iDotPos = email.LastIndexOf('.');
+        if (iAtPos < 1 || iDotPos < 3 || iDotPos <= iAtPos + 1)
+        {
+            return false;
+        }
+        return true;
+    }
+    
+    static public void TrackUserTime()
+    {
+    /* HOW THIS FUNCTION WORKS
+        _When a new session starts , Session["bTimeTracked"] is null because nothing is set.
+        _If Session["bTimeTracked"] is null, the current time is assigned to "LastUpdate" to
+        track time, and an entry is added for the current IP in "IPTime" table if needed.
+        Then Session["bTimeTracked"] is set to true so later we can go down the other path.
+        _If Session["bTimeTracked"] is not null, we retrieve "LastUpdate" from "IPTime" table,
+        then use this value to calculate and update both "TimeInSec" and "LastUpdate".
+            "TimeInSec" = Now - "LastUpdate"
+            "LastUpdate" = Now
+    FURTHER EXPLANATION
+        _If user uses more than one browser, each time he opens a new browser,
+        Session["bTimeTracked"] is null for that browser and "LastUpdate" is reset to Now. This
+        is where we must accept a few seconds lost. To reduce this lost, set MIN_SEC_TO_UPDATE_DB
+        to something small (and place more stress on the server).
+        _This function is called everytime the user navigates to another page on the website so
+        it places a big stress on the server. Good thing is this website is for training only so
+        even a three-year-old machine can still handle this stress ^_^
+        _This function doesn't track admin user.
+        _When the number of IP exceeds IP_TO_TRACK, the oldest one will get kicked out.
+    */
+        const short MIN_SEC_TO_UPDATE_DB = 5;//Only update database after at least this number of second has passed since last time
+        //Do not track localhost IP, do not track admin time
+        if (Request.IsLocal || IsAdmin())
+        {
+            return;
+        }
+        //Open the db for later use
+        var db = Database.Open("MyDB");
+        string sqlQuery = "SELECT * FROM IPTime WHERE IP=@0";
+        var Entry = db.QuerySingle(sqlQuery, Request.UserHostAddress);
+        //If this is the first time of this session
+        if (Session["bTimeTracked"] == null)
+        {
+            //Update session variables
+            Session["bTimeTracked"] = true;
+            //We need to create an entry for this user in the table if there isn't one
+            if (Entry == null)
+            {
+                //Now create a new entry for the new user
+                string sqlAdd = "INSERT INTO IPTime (IP, TimeInSec, LastUpdate) VALUES (@0, @1, @2)";
+                db.Execute(sqlAdd, Request.UserHostAddress, 0, DateTime.Now);
+                //Now we must check if the number of IP exceeds IP_TO_TRACK, if yes, we must remove the oldest one
+                string sqlCount = "SELECT COUNT(ID) FROM IPTime";
+                string sqlMinID = "SELECT MIN(ID) FROM IPTime";
+                string sqlRemove = "DELETE FROM IPTime WHERE ID=@0";
+                //Get the number of IP address
+                int Count = (int)db.QueryValue(sqlCount);//No need to worry about DBNull because we just added one
+                //Remove one (or more) if needed
+                while (Count > IP_TO_TRACK)
+                {                    
+                    var Oldest = db.QuerySingle(sqlMinID);
+                    db.Execute(sqlRemove, Oldest.ID);
+                    Count = (int)db.QueryValue(sqlCount);
+                }
+            }
+            else
+            {//If there's an entry for this IP already, we must update LastTime value to current time
+                string sqlSetLastUpdate = "UPDATE IPTime SET LastUpdate=@0 WHERE ID=@1";
+                db.Execute(sqlSetLastUpdate, DateTime.Now, Entry.ID);
+            }
+        }//if (Session["bTimeTracked"] == null)
+        else
+        {
+            //First, get LastUpdate time
+            DateTime lasttime = Entry.LastUpdate;
+            //Next, calculate the time span from now til then
+            TimeSpan t = DateTime.Now.Subtract(lasttime);
+            //Cast to float because the database doesn't support double
+            float time = (float)t.TotalSeconds;
+            //Only process if at least MIN_SEC_TO_UPDATE_DB has passed, ortherwise just wait until next time calling this function
+            if (time > MIN_SEC_TO_UPDATE_DB)
+            {
+                //If we get here, Entry should not be null, but who knows, anything can happen.                
+                if (Entry != null)
+                {
+                    time += Entry.TimeInSec;
+                    string sqlUpdate = "UPDATE IPTime SET TimeInSec=@0, LastUpdate=@1 WHERE ID=@2";
+                    db.Execute(sqlUpdate, time, DateTime.Now, Entry.ID);
+                }
+                else
+                {
+                    //Write something to the errorlog???
+                    //Maybe in future version. We don't have an error log at this time
+                    
+                    //Create an entry because we don't have one.                    
+                    string sqlAdd = "INSERT INTO IPTime (IP, TimeInSec, LastUpdate) VALUES (@0, @1, @2)";
+                    db.Execute(sqlAdd, Request.UserHostAddress, 0, DateTime.Now);
+                }
+            }//if (time > MIN_SEC_TO_UPDATE_DB)
+        }//else
+    }
+}

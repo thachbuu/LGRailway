@@ -1,0 +1,20 @@
+﻿@{
+    int TicketID = Request["id"].AsInt();
+    string ReturnUrl = Request["url"];
+    if (TicketID == 0)
+    {
+        Response.Redirect("InvalidPage.cshtml");
+    }
+    
+    //Delete the ticket
+    string sqlDelete = "DELETE FROM Ticket WHERE TicketID=@0";
+    var db = Database.Open("MyDB");
+    db.Execute(sqlDelete, TicketID);
+    
+    //Return to the page
+    if (ReturnUrl.IsEmpty())
+    {
+        ReturnUrl = "HomePage.cshtml";
+    }
+    Response.Redirect(ReturnUrl);
+}

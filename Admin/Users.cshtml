@@ -1,0 +1,98 @@
+﻿@{
+    PageData["Title"] = "Users";
+    
+    const int MAX_RESULT = 50;
+    int page = Request["page"].AsInt();
+    if (page < 1)
+    {
+        page = 1;
+    }
+    
+    //Open db
+    var db = Database.Open("MyDB");
+    //Get usercount
+    string sqlQUserCount = "SELECT COUNT(CustomerID) FROM Customers";
+    int iUserCount = (int)db.QueryValue(sqlQUserCount);    
+    //Cal pagecount
+    int iPageCount = iUserCount / MAX_RESULT + (iUserCount % MAX_RESULT != 0 ? 1 : 0);
+    //Paging users
+    string sqlQUsers = string.Format("SELECT * FROM Customers WHERE CustomerID>1 ORDER BY CustomerID ASC OFFSET {0} ROWS FETCH NEXT {1} ROWS ONLY", (MAX_RESULT * (page - 1)).ToString(), (MAX_RESULT).ToString());
+    var Users = db.Query(sqlQUsers);
+    //Query user ticket
+    string sqlQUserTicket = "SELECT COUNT(TicketID) FROM Ticket WHERE CustomerID=@0";
+    string[] strClassName = {"EvenRow", "OddRow"};
+    int i = 0;
+}
+<h1 align="center">@PageData["Title"]</h1>
+<p>
+    Total @iPageCount page(s). Max 50 results per page.<br/>
+    <button type="button" name="Prev" onclick="Go(@(page - 1))" @if(page < 2){<text>disabled="disabled"</text>}>Previous page</button>
+    <button type="button" name="Next" onclick="Go(@(page + 1))" @if(Users.Count() < MAX_RESULT){<text>disabled="disabled"</text>}>Next page</button>
+    Go to page #
+    <input type="text" size="4" maxlength="4" id="txtPage" onkeypress="return NumberOnly(event);" value="1"/>
+    <input type="button" onclick="Submit();" value="Go"/>
+</p>
+<div align="center">
+    <div @if(!_Fn.IsIELow()){<text>class="DivTable"</text>}>
+        <table class="MyTable" align="center">
+            <tr class="TableSmallHeader">
+                <th>ID</th>
+                <th>User</th>
+                <th>PID/Passport Number</th>
+                <th>Booking times</th>
+            </tr>
+            @foreach(var row in Users)
+            {
+                int TicketCount = (int)db.QueryValue(sqlQUserTicket, row.CustomerID);
+                <text>
+                <tr class=@strClassName[i%2] onMouseOut="this.className='@strClassName[i%2]'" onMouseOver="this.className='TableHilightRow'">
+                    <td>@row.CustomerID</td>
+                    <td>@row.Email</td>
+                    <td>@row.PIDNumber</td>
+                    <td>
+                        @if(TicketCount > 0)
+                        {
+                            @:<a href="UserTicket.cshtml?id=@row.CustomerID">
+                        }
+                        @TicketCount
+                        @if(TicketCount > 0)
+                        {
+                            @:</a>
+                        }
+                    </td>
+                </tr>
+                </text>
+                i++;
+            }
+        </table>
+    </div>
+</div>
+<script type="text/javascript">
+<!--
+    function Go(page)
+    {
+        if (page < 0 || page > @iPageCount)
+        {
+            alert("Page number [1-@iPageCount]");
+        }
+        else
+        {
+            window.location = "Users.cshtml?page=" + page;
+        }
+    }
+    function Submit()
+    {
+        var p = document.getElementById("txtPage").value;
+        Go(p);
+    }
+    
+    function NumberOnly(evt)
+    {
+        var charCode = (evt.which) ? evt.which : event.keyCode
+        if (charCode > 31 && (charCode < 48 || charCode > 57) )
+            return false;
+    
+        return true;
+    }
+//-->
+</script>

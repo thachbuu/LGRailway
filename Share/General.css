@@ -1,0 +1,374 @@
+﻿body {
+    font-family: Arial, Tahoma, serif;
+    background-color: #DBE7F3;
+    color: #08335E;
+    font-size: 14px;
+    line-height: 1.7em;
+}
+
+/* Page layout style  */
+#page{
+    padding: 10px 20px 10px 20px;
+    background-color: white;
+    width: 1100px;
+    margin: 0px auto;
+}
+
+#header{
+    text-align: center;
+}
+
+#footer {
+    text-align: right;
+    min-height: 70px;
+}
+
+#content {
+    margin: 30px 20px 30px 20px;
+    min-height: 400px;
+}
+
+#banner{
+    /*margin-bottom: 20px;*/
+}
+
+/* End page layout style  */
+
+.contact{
+    background-color: #ffee88;
+    text-align: left;  
+    font-weight: bold;
+    font-size: 1.2em;
+    list-style: none;
+    padding: 10px 10px 10px 10px;
+    margin: 0 30px 0 30px;
+}
+
+h1, h2{
+    font-size: 2em;
+    color: #4444FF;
+    margin-top: 5px;
+}
+
+h3, h4{
+    font-size: 1.2em;
+    color: #2222AA;
+}
+
+h4{
+    margin-bottom: 5px;
+    display:block;
+}
+
+.NoBorder{
+    border: 0;
+    text-align: left;
+}
+
+.Filter{
+    margin-bottom: 20px;
+    margin-left: 10px;
+    float: right;
+}
+
+/* Table style */
+table, th, td{
+    border: 1px solid gray;
+    padding: 5px 5px 5px 5px;
+    border-collapse: collapse;
+}
+
+table.MyTable{
+    background-color: White;
+    border: 1px solid #bbb;
+}
+
+table.WideTable{
+    width: 900px;
+}
+
+table.MedTable{
+    width: 700px;
+}
+
+table.MyTable th{
+    border: 0;
+    border-bottom: 1px solid gray;
+}
+
+.DivTable{
+    display: inline-block;
+    border: 1px solid gray;
+    overflow:hidden;
+    border-radius: 15px 15px 6px 6px;
+    margin: 10px 0 10px 0;   
+}
+
+table.TicketPriceTable{
+    border-collapse: collapse;
+    background-color: White;
+    text-align:center;
+    margin-top: 20px;
+}
+
+.TableSmallHeader{
+    background-color: #E6E9EE;
+    font-size: 14px;
+    color: #000055;
+}
+
+tr.TableHilightRow{
+    background-color: #eff;
+}
+
+tr.OddRow{
+    background-color: #F4F9FE;
+}
+
+tr.EvenRow{
+    background-color: #E1EAF2;
+}
+
+tr.OddRow td, tr.EvenRow td, tr.TableHilightRow td{
+    border: 0;
+    padding: 5px 7px 5px 7px;
+}
+
+th.RowHeader{
+    text-align: left;
+    font-weight: bold;
+    background-color: #BBEEFF;
+}
+
+td.Expired{
+    color: Red;
+    font-weight: bold;
+}
+
+td.Paid{
+    color: #33DD66;
+    font-weight: bold;
+}
+
+/* End table style */
+
+/* Hyper-link style */
+a{
+    color: #0000A0;
+}
+
+a:hover{
+    color: #DA70D6;
+}
+
+a.BoxLink{
+    display: inline-block;
+    font-weight: bold;
+    color: #FFFFDD;
+    background-color:#30A0FF;
+    text-decoration: none;
+    padding: 2px 5px 2px 5px;
+}
+
+a.BoxLink:hover{
+    color: #fff;
+    background-color:#77CCFF;
+}
+
+a.BoxLink:active {
+    background-color: #9ef;
+    color: #fff;
+    text-decoration: none;
+}
+        
+/* End hyper-link style */
+
+li.ListBig{
+    color: #00008B;
+    font-weight: bold;
+    list-style-type: disc;
+    margin-top: 15px;
+}
+
+li.ListSmall{
+    list-style-type: none;
+    margin-left: 20px;
+}
+
+li.spacing{
+    margin-bottom: 5px;
+}
+
+.AdminButton{
+    width: 150px;
+    height: 30px;
+    font-weight: bold;
+}
+
+hr.Separater{
+    width: 600px;
+    margin-top: 20px;
+}
+
+/*Text message and textbox*/
+.ErrorStatus{
+    margin: 15px 0 15px 0;
+    font-weight: bold;
+    color: Red;
+    width: 500px;
+    word-wrap: break-word;
+}
+
+.message {
+    clear: both;
+    border: 1px solid;
+    margin: 10px 0px 10px 0px;
+    padding: 10px 10px;
+    display: inline-block;
+}
+
+.message li{
+    margin-left: 10px;
+}
+
+.error {
+    background: #ffe4e4;
+    color: #be3e16;
+}
+
+.success {
+    background: #dff2bf;
+    color: #4f8a10;
+}
+
+.error-field { 
+    border: solid 1px #ee3e16; 
+    background-color: #ffe4e4;
+}
+
+.validation-error {
+    display: inline;
+    color: #be3e16;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.validation-error:before {
+    content: "»";
+}
+/*End text message and textbox*/
+
+/*form style here*/
+fieldset {
+    margin: 1em 0;
+    padding: 1em;
+    border: 1px solid #CCC;
+}
+
+    fieldset legend {
+        font-size: 1.1em;
+        font-weight: bold;
+        padding: 2px 4px 8px 4px;
+    }
+    
+    fieldset ol {
+        padding: 0;
+        list-style: none;
+    }
+    
+    fieldset label {
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    fieldset label.checkbox {
+        display: inline;
+    }
+
+        fieldset ol li {
+            padding-bottom: 15px;
+        }
+/*End form style*/
+
+/*Menu style here*/
+#menu{
+    overflow: hidden;
+    width: 100%;
+    font-size: 14px; /*font of menu text*/
+    border-bottom: 1px solid #08335E;
+    margin-bottom: 20px;
+}
+
+    #menu ul {
+        list-style-type: none;
+        margin-left: 5px; /*offset of first tab relative to page left edge*/
+        padding: 0;
+    }
+
+        #menu ul li {
+            float: left;
+            margin: 0;
+            padding: 0;
+        }
+    
+            #menu ul li a {
+                float: left;
+                position: relative;
+                top: 5px; /* 1) Number of pixels to protrude up for selected tab. Should equal (3) MINUS (2) below */
+                background: url(/Image/tab-blue-left.gif) no-repeat left top;
+                margin: 0;
+                margin-right: 3px; /*Spacing between each tab*/
+                padding: 0 0 0 9px;
+                text-decoration: none;
+            }
+            
+                #menu ul li a span {
+                    float: left;
+                    position: relative;
+                    display: block;
+                    background: url(/Image/tab-blue-right.gif) no-repeat right top;
+                    padding: 5px 14px 3px 5px; /* 2) Padding within each tab. The 3rd value, or 3px, should equal (1) MINUS (3) */
+                    font-weight: bold;
+                }
+                
+            #menu ul li.selected a{
+                background-position: 0 -125px;
+                top: 0;
+            }
+            
+                #menu ul li.selected a span{
+                    background-position: 100% -125px;
+                    color: #3af;
+                    padding-bottom: 8px; /* 3) Bottom padding of selected tab. Should equal (1) PLUS (2) above */
+                    top: 0;
+                }
+
+            #menu ul li a:hover, #menu ul li a:active {
+                background-position: 0% -125px;
+                top: 0;
+            }
+    
+                #menu ul li a:hover span, #menu ul li a:active span{
+                    background-position: 100% -125px;
+                    padding-bottom: 8px; /* 3) Bottom padding of selected tab. Should equal (1) PLUS (2) above */
+                    top: 0;
+                }
+                
+.account{
+    /*
+    border: 1px solid black;
+    background-color: #aff;
+    padding: 5px 5px 5px 5px;
+    */
+    color: Blue;
+    margin: 12px 1px 0 10px;    
+    display: inline-block;
+    float: right;
+    list-style: none;
+    text-align: left;
+    max-width: 300px;
+    word-wrap: break-word;
+    line-height: normal;
+}
+
+/*End menu style*/

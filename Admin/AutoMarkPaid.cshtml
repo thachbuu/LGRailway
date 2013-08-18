@@ -1,0 +1,50 @@
+﻿@{
+    int iPercent = Request["p"].AsInt();
+    if (iPercent < 30 || iPercent > 50)
+    {
+        Response.Redirect("~/Page/InvalidPage");
+    }
+    
+    DateTime today = DateTime.Now.Date;
+    DateTime EXPDate = DateTime.Now.Date.AddDays(-_Fn.DAY_TO_EXPIRE);
+    
+    var db = Database.Open("MyDB");
+    string sqlQTicket = "SELECT TicketID FROM Ticket WHERE Paid=0 AND BookDate>@0 AND DepartDate>=@1";
+    var tickets = db.Query(sqlQTicket, EXPDate, today);
+    
+    const int MIN_TICKET = 10;
+    int iCount = tickets.Count();
+    int iNumberToDo = 0;//The number of ticket to be marked as paid
+    
+    if (iCount >= MIN_TICKET)
+    {
+        iNumberToDo = (iCount * iPercent) / 100;
+        string sqlMark = "UPDATE Ticket SET Paid=1 WHERE TicketID=@0";
+        
+        //Set 50% base on Depart Date
+        string sqlQByDepartDate = string.Format("SELECT TOP {0} TicketID FROM Ticket WHERE Paid=0 AND BookDate>@0 AND DepartDate>=@1 ORDER BY DepartDate ASC", (iNumberToDo/2).ToString());
+        var TicketByDepartDate = db.Query(sqlQByDepartDate, EXPDate, today);
+        foreach(var ticket in TicketByDepartDate)
+        {
+            db.Execute(sqlMark, ticket.TicketID);
+        }
+        
+        //Set other 50% base on Book Date
+        string sqlQByBookDate = string.Format("SELECT TOP {0} TicketID FROM Ticket WHERE Paid=0 AND BookDate>@0 AND DepartDate>=@1 ORDER BY BookDate DESC", (iNumberToDo - iNumberToDo/2).ToString());
+        var TicketByBookDate = db.Query(sqlQByBookDate, EXPDate, today);
+        foreach(var ticket in TicketByBookDate)
+        {
+            db.Execute(sqlMark, ticket.TicketID);
+        }
+    }
+}
+
+<h1 align="center">Success</h1>
+@if(iCount < MIN_TICKET)
+{
+    <p>Too few unpaid ticket to do this.</p>
+}
+else
+{
+    <p>@iNumberToDo unpaid tickets have been marked as paid.</p>
+}

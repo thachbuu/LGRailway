@@ -1,0 +1,18 @@
+﻿<h1 align="center">Welcome to QA Railway</h1>
+<div>
+    <h4>With QA Railway's service, you can:</h4>
+    <ul>
+        <li>Look up train timetable to prepare for your trip</li>
+        <li>Check for ticket price to find what suits your need</li>
+        <li>Book your ticket online in a few easy steps</li>
+        <li>And a lot more</li>
+    </ul>
+    @if (!WebSecurity.IsAuthenticated)
+    {
+        <text>
+            If this is the first time you visit our website, please feel free to explore it. Good luck finding what you need here!<br/>
+            And if you need to book a ticket, you will have to <a href="/Account/Register.cshtml">create an account</a> first.
+        </text>
+    }
+    
+</div>

@@ -1,0 +1,124 @@
+﻿@{
+    Page["Title"] = "Login";
+    
+    if (WebSecurity.IsAuthenticated)
+    {
+        Response.Redirect("~/");
+    }
+
+    // Initialize general page variables
+    var username = "";
+    var password = "";
+
+    // Validation
+    var isValid = true;
+    var usernameErrorMessage = "";
+    var passwordErrorMessage = "";
+    var loginErrorMessage = "";
+
+    // If this is a POST request, validate and process data
+    if (IsPost) {
+        username = Request.Form["username"];
+        password = Request.Form["password"];
+
+        // Validate the user's username
+        if (username.IsEmpty()) 
+        {
+            usernameErrorMessage = "You must specify a username.";
+            isValid = false;
+        }
+
+        // Validate the user's password
+        if (password.IsEmpty()) 
+        {
+            passwordErrorMessage = "You must specify a password.";
+            isValid = false;
+        }
+
+        // Confirm there are no validation errors
+        if (isValid) 
+        {
+            // Attempt to login to the Security object using provided creds
+            if (WebSecurity.Login(username, password)) 
+            {
+                var returnUrl = Request.QueryString["ReturnUrl"];
+                if (returnUrl.IsEmpty())
+                {
+                    Response.Redirect("~/");
+                } else 
+                {
+                    Context.RedirectLocal(returnUrl);
+                }
+            }
+            else
+            {
+                loginErrorMessage = "Invalid username or password. Please try again.";
+            }
+
+            // If we arrived here, the login failed; convey that to the user
+            isValid = false;
+        }    
+    }
+}
+
+<h1 align="center">Login page</h1>
+<ul>
+   <li>You need to login before you can book ticket. Please enter your username and password below.</li>
+   <li>If you don't have an account, visit the <a href="@Href("~/Account/Register.cshtml")">registration page</a> and create one.</li>
+   <li>If you forgot your password, please visit <a href="/Account/ForgotPassword.cshtml">Forgot Password page</a> to recover it.</li>
+</ul>
+
+@* If one or more validation errors exist, show an error *@
+@if (!isValid)
+{
+        <p class="message error LoginForm">
+            @if (!loginErrorMessage.IsEmpty())
+            {
+                @loginErrorMessage;
+            }
+            else
+            {
+                @:There was a problem with your login and/or errors exist in your form.
+            }
+        </p>
+}
+
+<form method="post" action="" class="LoginForm">
+    <fieldset>
+        <legend>Log in to your account</legend>
+        <ol>
+            <li class="username">
+                <label for="username">Email:</label>
+                <input type="text" id="username" name="username" value="@username" onchange="this.value=RemoveTag(this.value);" @if(!usernameErrorMessage.IsEmpty()){<text>class="error-field"</text>} />
+                @* Write any username validation errors to the page *@
+                @if (!usernameErrorMessage.IsEmpty()) {
+                <label for="username" class="validation-error">
+                    @usernameErrorMessage
+                </label>
+                }
+            </li>
+            <li class="password">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" onchange="this.value=RemoveTag(this.value);" @if(!passwordErrorMessage.IsEmpty()){<text>class="error-field"</text>} />
+                @* Write any password validation errors to the page *@
+                @if (!passwordErrorMessage.IsEmpty()) {
+                <label for="password" class="validation-error">
+                    @passwordErrorMessage
+                </label>
+                }
+            </li>
+        </ol>
+        <p class="form-actions">
+            <input type="submit" value="login" title="Login"/>
+    </fieldset>
+</form>
+<script language="JavaScript">
+<!--
+function RemoveTag(s)
+{
+    var a = s.replace("<", "");
+    a = a.replace(">", "");
+    return a;
+}
+//-->
+</script>

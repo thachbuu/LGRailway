@@ -1,0 +1,20 @@
+﻿@{
+    int confirm = Request["confirm"].AsInt();
+    if (confirm == 999)
+    {
+        var db = Database.Open("MyDB");
+        string sqlClearEXPTicket = "DELETE FROM Ticket WHERE BookDate<=@0 AND Paid=0";
+        DateTime EXPDate = DateTime.Now.Date.AddDays(-3);
+        db.Execute(sqlClearEXPTicket, EXPDate);
+    }
+}
+@if(confirm == 999)
+{
+    <h1 align="center">All expired ticket deleted!</h1>
+    <p><a href="AdminPage.cshtml">Click here</a> to return to Admin page</p>
+}
+else
+{
+    <h1 align="center">Delete expired tickets page</h1>
+    <p>Hi admin! Why are you here?</p>
+}

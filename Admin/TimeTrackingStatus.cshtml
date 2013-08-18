@@ -1,0 +1,41 @@
+﻿@{
+    PageData["Title"] = "Time Tracking Status";
+    
+    var db = Database.Open("MyDB");
+    string sqlQuery = "SELECT * FROM IPTime ORDER BY IP ASC";
+    var IPTable = db.Query(sqlQuery);
+    
+    string[] strClassName = {"EvenRow", "OddRow"};
+}
+
+<h1 align="center">@PageData["Title"]</h1>
+
+<div align="center">
+    <div @if(!_Fn.IsIELow()){<text>class="DivTable"</text>}>
+        <table class="MyTable MedTable" align="center">
+            <tr class="TableSmallHeader" align="left">
+                <th>No.</th>
+                <th>IP address</th>
+                <th>Using time</th>
+            </tr>
+            @{int i = 1;}
+            @foreach(var row in IPTable)
+            {                
+                long t = (long)row.TimeInSec;
+                long d = t / 86400;//day
+                t -= d * 86400;
+                long h = t / 3600;//hour
+                t -= h * 3600;
+                long m = t / 60;//minute
+                t -= m * 60;
+                <text>
+                    <tr class=@strClassName[i%2] onMouseOut="this.className='@strClassName[i%2]'" onMouseOver="this.className='TableHilightRow'">
+                        <td>@(i++)</td>
+                        <td>@row.IP</td>
+                        <td>@(d + " day" + (d > 1 ? "s " : " ") + h + " hour" + (h > 1 ? "s " : " ") + m + " minute" + (m > 1 ? "s " : " ") + t + " second" + (t > 1 ? "s" : ""))</td>
+                    </tr>
+                </text>
+            }
+        </table>
+    </div>
+</div>

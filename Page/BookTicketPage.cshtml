@@ -1,0 +1,229 @@
+﻿@{//Admin user can't book ticket
+    if(_Fn.IsAdmin())
+    {
+        Response.Redirect("~/Admin/AdminPage.cshtml");
+    }
+}
+@{//Set page title
+    PageData["Title"] = "Book Ticket";
+    if (!WebSecurity.IsAuthenticated)
+    {
+        Response.Redirect("~/Account/Login.cshtml?ReturnUrl=" + Request.FilePath);
+    }
+}
+
+@{//Process the page from HTTP GET
+    //Get current date to fill in select depart date dropdown
+    DateTime today = DateTime.Now;
+    //Open the datatbase
+    var db = Database.Open("MyDB");
+    //Query all stations
+    string sqlQStations = "SELECT * from Stations ORDER BY StationID";
+    var StationList = db.Query(sqlQStations);
+    //Query all seats
+    string sqlQSeats = "SELECT * from Seats ORDER BY SeatID";
+    var SeatList = db.Query(sqlQSeats);
+    //User might get here by a URL similar to: ...?id1=IDStationSrc&id2=IDStationDst?id3=IDSeat
+    int IDStationSrc = Request["id1"].AsInt();
+    int IDStationDst = Request["id2"].AsInt();
+    int IDSeat = Request["id3"].AsInt();
+    //Some query to validate the parameters from the URL
+    string sqlQValidateStation = "SELECT StationName FROM Stations WHERE StationID=@0";
+    string sqlQValidateSeat = "SELECT SeatName FROM Seats WHERE SeatID=@0";
+    //If the params are not correct, show an error page.
+    if ( (IDStationSrc > 0 && db.Query(sqlQValidateStation, IDStationSrc).Count() < 1) || (IDStationDst > 0 && db.Query(sqlQValidateStation, IDStationDst).Count() < 1) || (IDSeat > 0 && db.Query(sqlQValidateSeat, IDSeat).Count() < 1) )
+    {
+        Response.Redirect("InvalidPage.cshtml");
+    }
+}
+
+@{//HTTP POST - When user submits the form
+    string strErrorStation = "";
+    string strErrorTicket = "";
+    string strErrorQuota = "";
+    bool isValid = true;
+    int iTicketAmount = 1;
+    int iDate = Request.Form["Date"].AsInt();
+    
+    if(IsPost)
+    {
+        //Validates the data in the form before processing it
+        
+        //Check if the station are different
+        IDStationSrc = Request.Form["DepartStation"].AsInt();
+        IDStationDst = Request.Form["ArriveStation"].AsInt();
+        //Get seatID now so that its value can be kept after an error
+        IDSeat = Request.Form["SeatType"].AsInt();
+        if (IDStationSrc == IDStationDst)
+        {
+            strErrorStation = "Depart and Arrive stations can't be the same.";
+            isValid = false;
+        }
+        
+        //Get the number of ticket this user has bought, expired and paid tickets are excluded
+        string sqlQTicketCount = "SELECT SUM(Quantity) FROM Ticket WHERE CustomerID=@0 AND Paid=0 AND (BookDate>@1 AND DepartDate >= @2)";
+        DateTime EXPDate = DateTime.Now.Date.AddDays(-_Fn.DAY_TO_EXPIRE);
+        var iTicketBought = db.QueryValue(sqlQTicketCount, WebSecurity.CurrentUserId, EXPDate, DateTime.Now.Date);
+        iTicketBought = (iTicketBought is DBNull ? 0 : iTicketBought);
+        //Get the number of ticket this user wants to buy now
+        iTicketAmount = Request["TicketAmount"].AsInt();
+        //If needed, show the max number of tickets this user can buy and let him choose once again
+        if (iTicketBought + iTicketAmount > _Fn.MAX_TICKET)
+        {
+            if (iTicketBought >= _Fn.MAX_TICKET)
+            {
+                strErrorTicket = String.Format("You have booked {0:D} tickets. You can book no more.", iTicketBought);
+            }
+            else
+            {
+                strErrorTicket = String.Format("You have booked {0:D} ticket(s). You can only book {1:D} more.", iTicketBought, _Fn.MAX_TICKET - iTicketBought);
+            }
+            isValid = false;
+        }
+        
+        //If there's no error in the form, process the booking
+        if (isValid)
+        {         
+            //Get seatPrice
+            string sqlQGetSeatPrice = "SELECT TOP 1 SeatPrice FROM Seats WHERE SeatID=@0";
+            int iSeatPrice = (int)db.QueryValue(sqlQGetSeatPrice, IDSeat);
+            //Get TrainID + Price
+            string sqlQGetTrainInfo = "SELECT Id, Price FROM TrainTime WHERE StationIdSrc=@0 AND StationIdDst=@1";
+            var TrainInfo = db.QuerySingle(sqlQGetTrainInfo, IDStationSrc, IDStationDst);
+            int IDTrain = 0, iTrainPrice = 0;
+            IDTrain = (int)TrainInfo.Id;
+            iTrainPrice = (int)TrainInfo.Price;
+            //Calculate the price of this ticket
+            int iPrice = (int) ((iTrainPrice + iSeatPrice) * _Fn.PRICE_VALUE);
+            //Get the depart date
+            DateTime departDate = today.AddDays(iDate).Date;
+            //Check this ticket quota
+            string sqlQQuota = "SELECT TicketID FROM Ticket WHERE DepartDate=@0 AND TrainTimeID=@1 AND (Paid>0 OR (Paid=0 AND BookDate>@2))";
+            var Sales = db.Query(sqlQQuota, departDate, IDTrain, EXPDate);
+            int iSaleCount = Sales.Count();
+            if (iSaleCount + iTicketAmount <= _Fn.TICKET_PER_TRAIN)
+            {
+                //Update the ticket table with user's record
+                string sqlITicket = "INSERT INTO Ticket (CustomerID, TrainTimeID, SeatID, Price, Quantity, DepartDate, BookDate) VALUES (@0, @1, @2, @3, @4, @5, @6)";
+                db.Execute(sqlITicket, WebSecurity.CurrentUserId, IDTrain, IDSeat, iPrice, iTicketAmount, departDate, today.Date);
+                int IDTicket = (int)db.GetLastInsertId();
+                //Show the success page
+                Response.Redirect(string.Format("SuccessPage.cshtml?id={0:D}", IDTicket));
+            }
+            else
+            {
+                isValid = false;
+                if (iSaleCount >= _Fn.TICKET_PER_TRAIN)
+                {
+                    strErrorQuota = "Sorry, this train is fully booked on " + departDate.ToShortDateString() + ".";
+                }
+                else
+                {
+                    strErrorTicket = "Sorry, we only have " + (_Fn.TICKET_PER_TRAIN - iSaleCount) + " ticket(s) left for this train on " + departDate.ToShortDateString() + ".";
+                }
+            }
+        }
+    }
+}
+
+<h1 align="center">Book ticket</h1>
+<div align="left">
+    <ul>
+        <li>Use the form below to book your ticket.</li>
+        <li>We only have ticket for 3-30 days ahead. Please come to the station to buy ticket if you need to depart within 2 days.</li>
+        <li>One person can book no more than @_Fn.MAX_TICKET tickets to prevent black market sales.</li>
+    </ul>
+    
+@if (!isValid) 
+{
+   <p class="message error">
+        @if(strErrorQuota.IsEmpty())
+        {            
+            @:There're errors in the form. Please correct the errors and try again.
+        }
+        else
+        {
+            @strErrorQuota
+        }
+   </p>
+}
+<form method="post" action="">
+    <fieldset>
+        <legend>Book ticket form</legend>
+        <ol>
+            <li>
+                <label>Depart date:</label>
+                <select name="Date">
+                    @for(int i = 3; i <= 30; i++)
+                    {
+                        @:<option value="@i"  @if (i == iDate){<text>selected="selected"</text>}>@today.AddDays(i).ToShortDateString()</option>
+                    }
+                </select>
+            </li>
+            <li>
+                <label>Depart from:</label>
+                <select name="DepartStation" onchange="getArriveList(this.value)">
+                    @foreach(var station in StationList)
+                    {
+                        @:<option value="@station.StationID" @if (station.StationID == IDStationSrc){<text>selected="selected"</text>}>@station.StationName</option>
+                    }
+                </select>
+            </li>
+            <li>
+                @{
+                    string sqlArriveStation = "SELECT S.StationName, S.StationID FROM Stations AS S, TrainTime AS T WHERE T.StationIdSrc=@0 AND (T.StationIdDst = S.StationID)";
+                    int idSrc = IDStationSrc == 0 ? 1 : IDStationSrc;
+                    var ArriveStations = db.Query(sqlArriveStation, idSrc);
+                }
+                <label>Arrive at:</label>
+                <span id="ArriveStation">
+                    <select name="ArriveStation" @if(!strErrorStation.IsEmpty()){<text>class="error-field"</text>}>
+                        @foreach(var station in ArriveStations)
+                        {
+                                @:<option value="@station.StationID" @if (station.StationID == IDStationDst){<text>selected="selected"</text>}>@station.StationName</option>
+                        }
+                    </select>
+                </span>
+                @if(!strErrorStation.IsEmpty()){<text><label class="validation-error">@strErrorStation</label></text>}
+            </li>
+            <li>
+                <label>Seat type:</label>
+                <select name="SeatType">
+                    @foreach(var seat in SeatList)
+                    {
+                            @:<option value="@seat.SeatID" @if (seat.SeatID == IDSeat){<text>selected="selected"</text>}>@seat.Description</option>
+                    }
+                </select>
+            </li>
+            <li>
+                <label>Ticket amount:</label>
+                <select name="TicketAmount" @if(!strErrorTicket.IsEmpty()){<text>class="error-field"</text>}>
+                    @for(int i = 1; i <= _Fn.MAX_TICKET; i++)
+                    {
+                        @:<option value="@i" @if(iTicketAmount == i){<text>selected="selected"</text>}>@i</option>
+                    }
+                </select>
+                @if(!strErrorTicket.IsEmpty()){<text><label class="validation-error">@strErrorTicket</label></text>}
+            </li>
+        </ol>
+        <input type="submit" value="Book ticket"/>
+    </fieldset>
+</form>
+<script type="text/javascript">
+<!--
+    function getArriveList(id)
+    {
+        var xmlhttp;        
+        xmlhttp=new XMLHttpRequest();        
+        xmlhttp.onreadystatechange=function()
+        {
+            if (xmlhttp.readyState==4 && xmlhttp.status==200)
+            {
+                document.getElementById("ArriveStation").innerHTML=xmlhttp.responseText;
+            }
+        }
+        xmlhttp.open("GET","/AJAX/GetArriveList.cshtml?id=" + id,true);
+        xmlhttp.send();
+    }
+//-->
+</script>

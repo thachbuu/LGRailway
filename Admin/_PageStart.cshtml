@@ -1,0 +1,15 @@
+﻿@{
+    //If not admin user, show error page
+    if (!_Fn.IsAdmin())
+    {
+        Response.Redirect("~/Page/InvalidPage.cshtml");
+    }
+    
+    Layout = "~/Share/_Layout1.cshtml";
+    string strBrowserInfo = "";
+    if (_Fn.IsSupportedBrowser(ref strBrowserInfo) == false)
+    {         
+        string strUnsupportURL = "~/OtherPage/UnsupportBrowser.cshtml?info=" + strBrowserInfo;
+        Response.Redirect(strUnsupportURL);
+    }
+}

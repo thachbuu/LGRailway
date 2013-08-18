@@ -1,0 +1,35 @@
+﻿@{
+    string message="";
+    int id = Request["id"].AsInt();
+    string name = Request["name"];
+    if (id <= 1 && name.IsEmpty())
+    {
+        message = "Unable to find the user with id = " + id;
+    }
+    else
+    {
+        var db = Database.Open("MyDB");
+        if (id > 1)
+        {
+            string sqlQID = "SELECT Email FROM Customers WHERE CustomerID = @0";
+            var dbCheck = db.QueryValue(sqlQID, id);
+            if (dbCheck != null)
+            {
+                Response.Redirect("UserTicket.cshtml?id=" + id);
+            }
+            message = "Unable to find the user with id = " + id;
+        }
+        else
+        {        
+            string sqlQUser = "SELECT CustomerID FROM Customers WHERE Email = @0";
+            var result = db.QueryValue(sqlQUser, name);
+            if (result != null)
+            {
+                Response.Redirect("UserTicket.cshtml?id=" + result);
+            }
+            message = "Unable to find the user with name = " + name;
+        }
+    }
+}
+<h1 align="center">Find user failed!</h1>
+@message

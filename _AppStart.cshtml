@@ -1,0 +1,8 @@
+﻿@{
+    WebSecurity.InitializeDatabaseConnection("MyDB", "Customers", "CustomerId", "Email", true);
+    WebMail.SmtpServer = "smtp.gmail.com";
+    WebMail.EnableSsl = true;
+    WebMail.UserName = "qarailway@gmail.com";
+    WebMail.Password = "lgtesting";
+    WebMail.From = "qarailway@gmail.com";
+}

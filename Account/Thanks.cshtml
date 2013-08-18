@@ -1,0 +1,19 @@
+﻿@{
+    Page["Title"] = "Thanks for registering";
+}
+
+<h1 align="center">Thank you for registering your account</h1>
+@if (!WebSecurity.IsAuthenticated)
+{
+    <h4>But you're not done yet!</h4>
+    <p>
+       An email with instructions on how to activate your account is on its way to you.
+       <br/>Please check your email.
+    </p>
+} 
+else
+{
+    <p>
+        Now you can book your ticket.
+    </p>
+}

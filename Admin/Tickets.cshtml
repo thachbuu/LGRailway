@@ -1,0 +1,185 @@
+﻿@{
+    PageData["Title"] = "Tickets";
+    
+    const int MAX_RESULT = 50;
+    //Get page number
+    int page = Request["page"].AsInt();
+    if (page < 1)
+    {
+        page = 1;
+    }
+    //Get date
+    string date = Request["date"];
+    if(date == null)
+    {
+        Response.Redirect("~/Page/InvalidPage.cshtml");
+    }
+    //Get search type
+    int searchType = Request["type"].AsInt();
+    string dateString = "";
+    if(searchType == 1)
+    {
+        dateString = "BookDate";
+    }
+    else if (searchType == 2)
+    {
+        dateString = "DepartDate";
+    }
+    else
+    {
+        Response.Redirect("~/Page/InvalidPage.cshtml");
+    }
+    //Get compare type
+    int cmpType = Request["cmp"].AsInt();
+    dateString += (cmpType == 2 ? "<" : (cmpType == 3 ? ">" : "="));
+    
+    //Open db
+    var db = Database.Open("MyDB");
+    //Get ticketcount
+    string sqlQTicketCount = string.Format("SELECT TicketID FROM Ticket WHERE {0}'{1}'", dateString, date);
+    var Tickets = db.Query(sqlQTicketCount, date);
+    int iTicketCount = Tickets.Count();
+    //Cal pagecount
+    int iPageCount = iTicketCount / MAX_RESULT + (iTicketCount % MAX_RESULT != 0 ? 1 : 0);
+    //Paging tickets
+    string template = @"SELECT 
+                            T2.StationIDSrc, T2.StationIDDst, 
+                            T1.TicketID, T1.CustomerID, T1.TrainTimeID, T1.SeatID, T1.Price, T1.Quantity, T1.DepartDate, T1.BookDate, T1.Paid, 
+                            S1.StationName AS DepartStation, S2.StationName AS ArriveStation, 
+                            ST.Description AS SeatName
+                        FROM TrainTime AS T2 
+                            INNER JOIN Ticket AS T1 ON (T1.TrainTimeID = T2.Id) 
+                            INNER JOIN Stations AS S1 ON (S1.StationID=T2.StationIDSrc) 
+                            INNER JOIN Stations AS S2 ON (S2.StationID=T2.StationIDDst) 
+                            INNER JOIN Seats AS ST ON (ST.SeatID=T1.SeatID)
+                        WHERE T1.{0}'{1}' 
+                        ORDER BY T1.TicketID ASC 
+                        OFFSET {2} ROWS FETCH NEXT {3} ROWS ONLY";
+    string sqlQTickets = string.Format(template, dateString, date, (MAX_RESULT * (page - 1)).ToString(), (MAX_RESULT).ToString());
+    Tickets = db.Query(sqlQTickets);
+    //Class name for table row
+    string[] strClassName = {"EvenRow", "OddRow"};
+    string returnURL = Request.FilePath + "?date=" + date + "&type=" + searchType + "&page=";
+}
+<h1 align="center">@PageData["Title"]</h1>
+@if(iTicketCount < 1)
+{
+    <p>No results found!</p>
+}
+else
+{
+    <p>
+        Total @iPageCount page(s). Max 50 results per page.<br/>
+        <button type="button" name="Prev" onclick="Go(@(page - 1))" @if(page < 2){<text>disabled="disabled"</text>}>Previous page</button>
+        <button type="button" name="Next" onclick="Go(@(page + 1))" @if(page >= iPageCount){<text>disabled="disabled"</text>}>Next page</button>
+        Go to page #
+        <input type="text" size="4" maxlength="4" id="txtPage" onkeypress="return NumberOnly(event);" value="1"/>
+        <input type="button" onclick="Submit();" value="Go"/>
+    </p>
+    <div align="center">
+        <div @if(!_Fn.IsIELow()){<text>class="DivTable"</text>}>
+            <table class="MyTable" align="center">
+                <tr class="TableSmallHeader">
+                    <th>No.</th>
+                    <th>Depart Station</th>
+                    <th>Arrive Station</th>
+                    <th>Seat Type</th>
+                    <th>Depart Date</th>
+                    <th>Book Date</th>
+                    <th>Expired Date</th>
+                    <th>Status</th>
+                    <th>Amount</th>
+                    <th>Total Price</th>
+                    <th>Operation</th>
+                </tr>
+                @{int i = 0;}
+                @foreach(var ticket in Tickets)
+                {
+                    i++;
+                    DateTime ExpireDate = ticket.BookDate.AddDays(@_Fn.DAY_TO_EXPIRE);
+                    if (DateTime.Compare(ExpireDate.Date, ticket.DepartDate.Date) > 0)
+                    {
+                        ExpireDate = ticket.DepartDate.AddDays(1);
+                    }
+                    bool expired = _Fn.IsExpired(ticket.BookDate, ticket.DepartDate);
+                    bool paid = ticket.Paid != 0 ? true : false;
+                    expired = paid ? false : expired;
+                    string DeleteURL = "/Page/_DeleteTicket.cshtml?id=" + ticket.TicketID + "&url=" + returnURL + page;                        
+                    <text>
+                        <tr class=@strClassName[i%2] onMouseOut="this.className='@strClassName[i%2]'" onMouseOver="this.className='TableHilightRow'">
+                            <td>@i</td>
+                            <td>@ticket.DepartStation</td>
+                            <td>@ticket.ArriveStation</td>
+                            <td>@ticket.SeatName</td>
+                            <td>@ticket.DepartDate.ToShortDateString()</td>
+                            <td>@ticket.BookDate.ToShortDateString()</td>                        
+                            <td @(expired ? "class=Expired" : "")>@ExpireDate.ToShortDateString()</td>
+                            <td @(paid ? "class=Paid" : (expired ? "class=Expired" : ""))>@(paid ? "Paid" : (expired ? "Expired" : "New"))</td>
+                            <td>@ticket.Quantity</td>
+                            <td>@(ticket.Price*ticket.Quantity)</td>
+                            <td>
+                                @if(expired)
+                                {
+                                    <text>
+                                        <input type="button" value="Delete" onclick="DeleteTicket(@ticket.TicketID);"/>
+                                    </text>
+                                }
+                                else if (!paid)
+                                {
+                                    <text>
+                                        <input type="button" value="Mark Paid" onclick="MarkTicket(@ticket.TicketID, 1)"/>
+                                    </text>
+                                }
+                                else if (!_Fn.IsExpired(ticket.BookDate, ticket.DepartDate))
+                                {
+                                    <text>
+                                        <input type="button" value="Unmark Paid" onclick="MarkTicket(@ticket.TicketID, 0)"/>
+                                    </text>
+                                }
+                            </td>                        
+                        </tr>
+                    </text>
+                }
+            </table>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+    <!--
+        function Go(page)
+        {
+            if (page < 0 || page > @iPageCount)
+            {
+                alert("Page number [1-@iPageCount]");
+            }
+            else
+            {
+                s = "@returnURL" + page;
+                s = s.replace(/&amp;/g, '&');
+                window.location = s;
+            }
+        }
+        function Submit()
+        {
+            var p = document.getElementById("txtPage").value;
+            Go(p);
+        }
+        function MarkTicket(ticketID, mark)
+        {
+            s = "MarkTicket.cshtml?Tid=" + ticketID + "&mark=" + mark + "&url=@returnURL" + @page;
+            s = s.replace(/&amp;/g, '%26');
+            window.location= s;
+        }
+        function NumberOnly(evt)
+        {
+            var e = window.event || evt; // for trans-browser compatibility
+            var charCode = e.which || e.keyCode;
+        
+            if (charCode > 31 && (charCode < 48 || charCode > 57))
+                return false;
+        
+            return true;
+        }
+    //-->
+    </script>
+}

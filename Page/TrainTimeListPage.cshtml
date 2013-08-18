@@ -1,0 +1,44 @@
+﻿@{
+    PageData["Title"] = "Train Timetable";
+    
+    var db = Database.Open("MyDB");
+    var sqlQTrainTime = "SELECT T.StationIDSrc, T.StationIdDst, T.DepartTime, T.ArriveTime, S1.StationName AS StationSrc, S2.StationName AS StationDst FROM TrainTime AS T INNER JOIN Stations AS S1 ON (S1.StationID=T.StationIDSrc) INNER JOIN Stations AS S2 ON (S2.StationID=T.StationIDDst) ORDER BY T.StationIDSrc, T.StationIDDst";
+    var TrainTime = db.Query(sqlQTrainTime);
+    
+    string[] strClassName = {"EvenRow", "OddRow"};
+}
+
+<h1 align="center">@PageData["Title"]</h1>
+<div align="center" class="divCenter">
+    <div @if(!_Fn.IsIELow()){<text>class="DivTable"</text>}>
+        <table class="MyTable WideTable" align="center">
+            <thead>
+                <tr class="TableSmallHeader" align="left">
+                    <th>No.</th>
+                    <th>Depart Station</th>
+                    <th>Arrive Station</th>
+                    <th>Depart Time</th>        
+                    <th>Arrive Time</th>
+                    <th>Check Price</th>
+                    <th>Book ticket</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{int i = 1;}
+                @foreach(var row in TrainTime)
+                {
+                    <tr class=@strClassName[i%2] onMouseOut="this.className='@strClassName[i%2]'" onMouseOver="this.className='TableHilightRow'">
+                        <td>@i</td>
+                        <td>@row.StationSrc</td>
+                        <td>@row.StationDst</td>
+                        <td>@row.DepartTime</td>
+                        <td>@row.ArriveTime</td>
+                        <td><a href="TicketPricePage.cshtml?id1=@row.StationIDSrc&id2=@row.StationIdDst">check price</a></td>
+                        <td><a href="BookTicketPage.cshtml?id1=@row.StationIDSrc&id2=@row.StationIdDst">book ticket</a></td>
+                        @{i++;}
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
